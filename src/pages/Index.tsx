@@ -1,7 +1,7 @@
-import { MonteCarloSimulator } from "@/components/simulation/MonteCarloSimulator";
+import { SimpleMonteCarloSimulator } from "@/components/simulation/SimpleMonteCarloSimulator";
 
 const Index = () => {
-  return <MonteCarloSimulator />;
+  return <SimpleMonteCarloSimulator />;
 };
 
 export default Index;
