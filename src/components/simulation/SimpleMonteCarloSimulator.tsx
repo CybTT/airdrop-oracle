@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Play, AlertTriangle, Loader2, ChevronDown } from "lucide-react";
+import { Play, AlertTriangle, Loader2 } from "lucide-react";
 import { 
   SimpleSimulationParams, 
   SimpleSimulationResults, 
@@ -20,7 +20,6 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const DEFAULT_THRESHOLDS = [60, 120, 300];
 
@@ -110,18 +109,27 @@ export function SimpleMonteCarloSimulator() {
               <AccordionItem value="advanced" className="border rounded-lg">
                 <AccordionTrigger className="px-4 py-3 text-sm font-medium hover:no-underline">
                   <span className="flex items-center gap-2">
-                    Advanced Options
+                    How It Works
                   </span>
                 </AccordionTrigger>
                 <AccordionContent className="px-4 pb-4">
                   <div className="space-y-3 text-sm">
                     <div className="p-3 bg-muted/50 rounded-lg space-y-2">
-                      <p className="font-medium">Distribution Details</p>
+                      <p className="font-medium">FDV Distribution</p>
                       <p className="text-xs text-muted-foreground">
-                        <strong>FDV:</strong> Power-law weighted sampling. Rarity slider controls exponent k (1.0–2.5); higher values favor lower FDVs.
+                        • <strong>High probability zone:</strong> First $30M above min (75% weight, uniform)
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        <strong>Drop%:</strong> Triangular distribution with mode at 20% of range (biased toward lower values)
+                        • <strong>Declining zone:</strong> Above that up to $200M (24% weight, probability decreases as FDV increases)
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        • <strong>Rare tail:</strong> $200M–$300M (1% weight, if max ≥ $200M)
+                      </p>
+                    </div>
+                    <div className="p-3 bg-muted/50 rounded-lg space-y-2">
+                      <p className="font-medium">Drop% Distribution</p>
+                      <p className="text-xs text-muted-foreground">
+                        Triangular distribution biased toward lower end (mode at 20% of range)
                       </p>
                     </div>
                     <div className="p-3 bg-muted/50 rounded-lg">
