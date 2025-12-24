@@ -4,6 +4,9 @@
 @import url("https://fonts.googleapis.com/css2?family=Roboto&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Libre+Caslon+Text&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Roboto+Mono&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Crimson+Text&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inconsolata&display=swap");
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -14,35 +17,35 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 0 0% 96%;
-    --foreground: 0 0% 9%;
+    --background: 0 0% 0%;
+    --foreground: 0 0% 100%;
 
-    --card: 0 0% 98%;
-    --card-foreground: 0 0% 9%;
+    --card: 0 0% 6%;
+    --card-foreground: 0 0% 98%;
 
-    --popover: 0 0% 89%;
-    --popover-foreground: 0 0% 9%;
+    --popover: 0 0% 8%;
+    --popover-foreground: 240 5% 96%;
 
-    --primary: 26 90.4762% 37.0588%;
-    --primary-foreground: 45 93.3884% 47.451%;
+    --primary: 46 100% 58%;
+    --primary-foreground: 0 0% 0%;
 
-    --secondary: 38 92.126% 50.1961%;
-    --secondary-foreground: 15 74.6479% 27.8431%;
+    --secondary: 24 10% 10%;
+    --secondary-foreground: 50 98% 64%;
 
-    --muted: 0 0% 63%;
-    --muted-foreground: 0 0% 9%;
+    --muted: 240 6% 10%;
+    --muted-foreground: 240 5% 65%;
 
-    --accent: 47 100% 96%;
-    --accent-foreground: 37 92% 50%;
+    --accent: 240 4% 16%;
+    --accent-foreground: 46 100% 58%;
 
-    --destructive: 0 72% 50%;
-    --destructive-foreground: 0 85% 97%;
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 0 86% 97%;
 
-    --border: 0 0% 83%;
-    --input: 0 0% 83%;
-    --ring: 20 90% 48%;
+    --border: 0 0% 15%;
+    --input: 240 10% 4%;
+    --ring: 46 100% 58%;
 
-    --radius: 0.75rem;
+    --radius: 1.875rem;
 
     --sidebar-background: 0 0% 98%;
 
@@ -60,35 +63,35 @@ All colors MUST be HSL.
 
     --sidebar-ring: 20 90% 48%;
 
-    --chart-1: 27 95% 60%;
+    --chart-1: 46 100% 58%;
 
-    --chart-2: 43 96% 56%;
+    --chart-2: 39 98% 56%;
 
-    --chart-3: 47 95% 53%;
+    --chart-3: 32 95% 44%;
 
-    --chart-4: 24 94% 53%;
+    --chart-4: 23 82% 31%;
 
-    --chart-5: 0 0% 45%;
+    --chart-5: 21 92% 14%;
 
     --sidebar: 0 0% 98%;
 
-    --font-sans: 'Roboto', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+    --font-sans: Inter, ui-sans-serif, system-ui, sans-serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji;
 
-    --font-serif: 'Libre Caslon Text', ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
+    --font-serif: "Crimson Text", ui-serif, Georgia, Cambria, Times New Roman, Times, serif;
 
-    --font-mono: 'Roboto Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+    --font-mono: Inconsolata, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace;
 
     --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
 
     --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
 
-    --shadow-sm: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
+    --shadow-sm: 0px 0px 5px 0px hsl(41, 100%, 51%);
 
-    --shadow: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
+    --shadow: 0px 0px 10px 0px hsl(41, 100%, 51%);
 
-    --shadow-md: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 2px 4px -1px hsl(0 0% 0% / 0.1);
+    --shadow-md: 0px 0px 15px 0px hsl(41, 100%, 51%);
 
-    --shadow-lg: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 4px 6px -1px hsl(0 0% 0% / 0.1);
+    --shadow-lg: 0px 0px 25px 0px hsl(41, 100%, 51%);
 
     --shadow-xl: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 8px 10px -1px hsl(0 0% 0% / 0.1);
 
@@ -143,12 +146,16 @@ All colors MUST be HSL.
     --sidebar: 0 0% 14%;
     --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
     --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
-    --shadow-sm: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
-    --shadow: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
-    --shadow-md: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 2px 4px -1px hsl(0 0% 0% / 0.1);
-    --shadow-lg: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 4px 6px -1px hsl(0 0% 0% / 0.1);
+    --shadow-sm: 0px 0px 5px 0px hsl(41, 100%, 51%);
+    --shadow: 0px 0px 10px 0px hsl(41, 100%, 51%);
+    --shadow-md: 0px 0px 15px 0px hsl(41, 100%, 51%);
+    --shadow-lg: 0px 0px 25px 0px hsl(41, 100%, 51%);
     --shadow-xl: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 8px 10px -1px hsl(0 0% 0% / 0.1);
     --shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.25);
+    --font-sans: Inter, ui-sans-serif, system-ui, sans-serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji;
+    --font-serif: "Crimson Text", ui-serif, Georgia, Cambria, Times New Roman, Times, serif;
+    --font-mono: Inconsolata, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace;
+    --radius: 1.875rem;
   }
 }
 
