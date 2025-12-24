@@ -2,7 +2,6 @@ import { SimpleSimulationParams, ValidationError } from "@/lib/simple-monte-carl
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Slider } from "@/components/ui/slider";
 import { AlertCircle } from "lucide-react";
 
 interface SimpleInputFormProps {
@@ -59,7 +58,7 @@ export function SimpleInputForm({ params, errors, onParamChange }: SimpleInputFo
                 value={params.fdvMinM}
                 onChange={(e) => onParamChange('fdvMinM', parseFloat(e.target.value) || 0)}
                 className="pl-7 font-mono"
-                placeholder="100"
+                placeholder="20"
               />
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">M</span>
             </div>
@@ -78,7 +77,7 @@ export function SimpleInputForm({ params, errors, onParamChange }: SimpleInputFo
                 value={params.fdvMaxM}
                 onChange={(e) => onParamChange('fdvMaxM', parseFloat(e.target.value) || 0)}
                 className="pl-7 font-mono"
-                placeholder="500"
+                placeholder="200"
               />
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">M</span>
             </div>
@@ -101,7 +100,7 @@ export function SimpleInputForm({ params, errors, onParamChange }: SimpleInputFo
                 value={params.dropMinPct}
                 onChange={(e) => onParamChange('dropMinPct', parseFloat(e.target.value) || 0)}
                 className="pr-8 font-mono"
-                placeholder="1"
+                placeholder="5"
               />
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>
             </div>
@@ -119,36 +118,11 @@ export function SimpleInputForm({ params, errors, onParamChange }: SimpleInputFo
                 value={params.dropMaxPct}
                 onChange={(e) => onParamChange('dropMaxPct', parseFloat(e.target.value) || 0)}
                 className="pr-8 font-mono"
-                placeholder="5"
+                placeholder="50"
               />
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>
             </div>
             <FieldError errors={errors} field="dropMaxPct" />
-          </div>
-        </div>
-
-        {/* High-FDV Rarity Slider */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <Label htmlFor="fdvRarity" className="text-sm font-medium">
-              High-FDV Rarity
-            </Label>
-            <span className="text-xs font-mono text-muted-foreground">
-              {params.fdvRarity}
-            </span>
-          </div>
-          <Slider
-            id="fdvRarity"
-            value={[params.fdvRarity]}
-            onValueChange={([value]) => onParamChange('fdvRarity', value)}
-            min={0}
-            max={100}
-            step={1}
-            className="w-full"
-          />
-          <div className="flex justify-between text-xs text-muted-foreground">
-            <span>High FDVs more likely</span>
-            <span>Low FDVs more likely</span>
           </div>
         </div>
 

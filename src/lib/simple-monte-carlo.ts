@@ -1,14 +1,12 @@
-// Simplified Monte Carlo Engine with Auto-Distribution Logic
-// User only provides: FDV range (millions), Drop% range (percentages)
-// Distributions are determined automatically
+// Simple Monte Carlo Engine with Fixed 3-Part FDV Mixture Distribution
+// No sliders, no user-configurable distributions - all auto-determined
 
 export interface SimpleSimulationParams {
   nftSupply: number;
   fdvMinM: number;  // FDV min in MILLIONS
   fdvMaxM: number;  // FDV max in MILLIONS
-  dropMinPct: number;  // Drop% min as percentage (e.g., 1 = 1%)
-  dropMaxPct: number;  // Drop% max as percentage (e.g., 5 = 5%)
-  fdvRarity: number;  // High-FDV Rarity slider (0-100), 0=log-uniform, 100=strong low-FDV preference
+  dropMinPct: number;  // Drop% min as percentage (e.g., 5 = 5%)
+  dropMaxPct: number;  // Drop% max as percentage (e.g., 50 = 50%)
   numSimulations: number;
   seed?: number;
 }
@@ -110,26 +108,108 @@ class SeededRandom {
   }
 }
 
-// K-weighted / power-law-like FDV sampling
-// rarity: 0-100 slider, maps to exponent k: 1.0 to 2.5
-// k=1 is log-uniform, k>1 favors lower FDVs
-function sampleFDVWithRarity(min: number, max: number, rarity: number, u: number): number {
-  // Map rarity (0-100) to exponent k (1.0 to 2.5)
-  const k = 1.0 + 1.5 * (rarity / 100);
+// FDV Mixture Distribution Zones
+interface FDVZone {
+  min: number;
+  max: number;
+  weight: number;
+  type: 'uniform' | 'linearDecreasing';
+}
+
+interface FDVZones {
+  zones: FDVZone[];
+  cumulativeWeights: number[];
+}
+
+// Calculate FDV zones based on user inputs
+// Fixed 3-part mixture:
+// A) High probability zone: [fdvMin, fdvMin+30M] - Uniform, weight 0.75
+// B) Declining zone: (end of A, fdvMax or 200M] - Linear decreasing, weight 0.24
+// C) Ultra-rare tail: (200M, min(fdvMax, 300M)] - Uniform, weight 0.01 (only if fdvMax >= 200M)
+function calculateFDVZones(fdvMinM: number, fdvMaxM: number): FDVZones {
+  const fdvMin = fdvMinM * 1_000_000;
+  const fdvMax = fdvMaxM * 1_000_000;
   
-  if (Math.abs(k - 1) < 0.001) {
-    // k ≈ 1: log-uniform special case
-    const logMin = Math.log(min);
-    const logMax = Math.log(max);
-    return Math.exp(logMin + u * (logMax - logMin));
+  // Zone boundaries
+  const zoneABandwidth = 30_000_000; // 30M high-probability band
+  const tailThreshold = 200_000_000; // 200M threshold for tail
+  const tailCap = 300_000_000; // 300M cap for tail
+  
+  // Base weights
+  const baseWA = 0.75;
+  const baseWB = 0.24;
+  const baseWC = 0.01;
+  
+  const zones: FDVZone[] = [];
+  
+  // Zone A: [fdvMin, min(fdvMin + 30M, fdvMax)] - Uniform
+  const zoneAMax = Math.min(fdvMin + zoneABandwidth, fdvMax);
+  if (zoneAMax > fdvMin) {
+    zones.push({ min: fdvMin, max: zoneAMax, weight: baseWA, type: 'uniform' });
   }
   
-  // General power-law case:
-  // FDV = ( min^(1-k) + u * (max^(1-k) - min^(1-k)) )^(1/(1-k))
-  const oneMinusK = 1 - k;
-  const minPow = Math.pow(min, oneMinusK);
-  const maxPow = Math.pow(max, oneMinusK);
-  return Math.pow(minPow + u * (maxPow - minPow), 1 / oneMinusK);
+  // Zone B: (end of A, fdvMax] but capped at 200M if tail exists - Linear decreasing
+  const zoneBMin = zoneAMax;
+  const zoneBMax = fdvMax >= tailThreshold ? Math.min(fdvMax, tailThreshold) : fdvMax;
+  if (zoneBMax > zoneBMin) {
+    zones.push({ min: zoneBMin, max: zoneBMax, weight: baseWB, type: 'linearDecreasing' });
+  }
+  
+  // Zone C: (200M, min(fdvMax, 300M)] - Uniform, only if fdvMax > 200M
+  if (fdvMax > tailThreshold) {
+    const zoneCMax = Math.min(fdvMax, tailCap);
+    zones.push({ min: tailThreshold, max: zoneCMax, weight: baseWC, type: 'uniform' });
+  }
+  
+  // Re-normalize weights if any zone is missing
+  const totalWeight = zones.reduce((sum, z) => sum + z.weight, 0);
+  if (totalWeight > 0 && Math.abs(totalWeight - 1) > 0.001) {
+    zones.forEach(z => {
+      z.weight = z.weight / totalWeight;
+    });
+  }
+  
+  // Pre-compute cumulative weights for fast sampling
+  const cumulativeWeights: number[] = [];
+  let cumulative = 0;
+  for (const zone of zones) {
+    cumulative += zone.weight;
+    cumulativeWeights.push(cumulative);
+  }
+  
+  return { zones, cumulativeWeights };
+}
+
+// Sample from linear decreasing density on [a, b]
+// PDF proportional to (b - x), so higher density near a (lower FDVs)
+// Inverse CDF: x = b - sqrt((b-a)^2 * (1-u))
+function sampleLinearDecreasing(min: number, max: number, u: number): number {
+  const range = max - min;
+  return max - Math.sqrt(range * range * (1 - u));
+}
+
+// Sample FDV from 3-part mixture distribution
+function sampleFDVMixture(fdvZones: FDVZones, u1: number, u2: number): number {
+  const { zones, cumulativeWeights } = fdvZones;
+  
+  // Find which zone u1 falls into
+  let zoneIndex = 0;
+  for (let i = 0; i < cumulativeWeights.length; i++) {
+    if (u1 <= cumulativeWeights[i]) {
+      zoneIndex = i;
+      break;
+    }
+  }
+  
+  const zone = zones[zoneIndex];
+  
+  // Sample within selected zone using u2
+  if (zone.type === 'uniform') {
+    return zone.min + u2 * (zone.max - zone.min);
+  } else {
+    // Linear decreasing density
+    return sampleLinearDecreasing(zone.min, zone.max, u2);
+  }
 }
 
 // Triangular with auto mode: mode = min + 0.20 * (max - min)
@@ -217,10 +297,11 @@ export function runSimpleSimulation(
   const startTime = performance.now();
   
   // Convert inputs
-  const fdvMin = params.fdvMinM * 1_000_000;  // Convert M to raw
-  const fdvMax = params.fdvMaxM * 1_000_000;
   const dropMin = params.dropMinPct / 100;     // Convert % to decimal
   const dropMax = params.dropMaxPct / 100;
+  
+  // Calculate FDV zones based on user's min/max
+  const fdvZones = calculateFDVZones(params.fdvMinM, params.fdvMaxM);
   
   // Initialize RNG
   const seed = params.seed ?? Math.floor(Math.random() * 2147483647);
@@ -231,14 +312,15 @@ export function runSimpleSimulation(
   
   // Run simulation
   for (let i = 0; i < params.numSimulations; i++) {
-    const u1 = rng.next();
-    const u2 = rng.next();
+    const u1 = rng.next(); // For zone selection
+    const u2 = rng.next(); // For within-zone sampling
+    const u3 = rng.next(); // For drop%
     
-    // FDV: k-weighted power-law sampling based on rarity slider
-    const fdv = sampleFDVWithRarity(fdvMin, fdvMax, params.fdvRarity, u1);
+    // FDV: 3-part mixture distribution
+    const fdv = sampleFDVMixture(fdvZones, u1, u2);
     
     // Drop%: triangular with mode biased low (20% into range)
-    const dropPct = sampleTriangularAutoMode(dropMin, dropMax, u2);
+    const dropPct = sampleTriangularAutoMode(dropMin, dropMax, u3);
     
     // Core formula
     values[i] = (fdv * dropPct) / params.nftSupply;
@@ -271,7 +353,9 @@ export function runSimpleSimulation(
   // Thresholds
   const thresholdProbs = calcThresholdProbs(sorted, thresholds);
   
-  // Anchors
+  // Anchors (use actual user min/max in dollars)
+  const fdvMin = params.fdvMinM * 1_000_000;
+  const fdvMax = params.fdvMaxM * 1_000_000;
   const worstCase = (fdvMin * dropMin) / params.nftSupply;
   const bestCase = (fdvMax * dropMax) / params.nftSupply;
   
@@ -290,10 +374,9 @@ export function runSimpleSimulation(
 // Default params
 export const DEFAULT_PARAMS: SimpleSimulationParams = {
   nftSupply: 8888,
-  fdvMinM: 100,      // 100M
-  fdvMaxM: 500,      // 500M
-  dropMinPct: 1,     // 1%
-  dropMaxPct: 5,     // 5%
-  fdvRarity: 50,     // Default mid-range rarity (k=1.75)
+  fdvMinM: 20,       // 20M
+  fdvMaxM: 200,      // 200M
+  dropMinPct: 5,     // 5%
+  dropMaxPct: 50,    // 50%
   numSimulations: 200000
 };
