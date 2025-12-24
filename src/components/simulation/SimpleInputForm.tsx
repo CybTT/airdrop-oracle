@@ -2,6 +2,7 @@ import { SimpleSimulationParams, ValidationError } from "@/lib/simple-monte-carl
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
 import { AlertCircle } from "lucide-react";
 
 interface SimpleInputFormProps {
@@ -123,6 +124,31 @@ export function SimpleInputForm({ params, errors, onParamChange }: SimpleInputFo
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>
             </div>
             <FieldError errors={errors} field="dropMaxPct" />
+          </div>
+        </div>
+
+        {/* High-FDV Rarity Slider */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="fdvRarity" className="text-sm font-medium">
+              High-FDV Rarity
+            </Label>
+            <span className="text-xs font-mono text-muted-foreground">
+              {params.fdvRarity}
+            </span>
+          </div>
+          <Slider
+            id="fdvRarity"
+            value={[params.fdvRarity]}
+            onValueChange={([value]) => onParamChange('fdvRarity', value)}
+            min={0}
+            max={100}
+            step={1}
+            className="w-full"
+          />
+          <div className="flex justify-between text-xs text-muted-foreground">
+            <span>High FDVs more likely</span>
+            <span>Low FDVs more likely</span>
           </div>
         </div>
 

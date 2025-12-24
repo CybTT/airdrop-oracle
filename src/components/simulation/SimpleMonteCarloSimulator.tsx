@@ -118,7 +118,7 @@ export function SimpleMonteCarloSimulator() {
                     <div className="p-3 bg-muted/50 rounded-lg space-y-2">
                       <p className="font-medium">Distribution Details</p>
                       <p className="text-xs text-muted-foreground">
-                        <strong>FDV:</strong> Log-uniform between min and max values
+                        <strong>FDV:</strong> Power-law weighted sampling. Rarity slider controls exponent k (1.0–2.5); higher values favor lower FDVs.
                       </p>
                       <p className="text-xs text-muted-foreground">
                         <strong>Drop%:</strong> Triangular distribution with mode at 20% of range (biased toward lower values)
