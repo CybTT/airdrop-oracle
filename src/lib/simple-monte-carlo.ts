@@ -8,6 +8,7 @@ export interface SimpleSimulationParams {
   fdvMaxM: number;  // FDV max in MILLIONS
   dropMinPct: number;  // Drop% min as percentage (e.g., 1 = 1%)
   dropMaxPct: number;  // Drop% max as percentage (e.g., 5 = 5%)
+  fdvRarity: number;  // High-FDV Rarity slider (0-100), 0=log-uniform, 100=strong low-FDV preference
   numSimulations: number;
   seed?: number;
 }
@@ -109,11 +110,26 @@ class SeededRandom {
   }
 }
 
-// Log-uniform: FDV = exp(U(ln(min), ln(max)))
-function sampleLogUniform(min: number, max: number, u: number): number {
-  const logMin = Math.log(min);
-  const logMax = Math.log(max);
-  return Math.exp(logMin + u * (logMax - logMin));
+// K-weighted / power-law-like FDV sampling
+// rarity: 0-100 slider, maps to exponent k: 1.0 to 2.5
+// k=1 is log-uniform, k>1 favors lower FDVs
+function sampleFDVWithRarity(min: number, max: number, rarity: number, u: number): number {
+  // Map rarity (0-100) to exponent k (1.0 to 2.5)
+  const k = 1.0 + 1.5 * (rarity / 100);
+  
+  if (Math.abs(k - 1) < 0.001) {
+    // k ≈ 1: log-uniform special case
+    const logMin = Math.log(min);
+    const logMax = Math.log(max);
+    return Math.exp(logMin + u * (logMax - logMin));
+  }
+  
+  // General power-law case:
+  // FDV = ( min^(1-k) + u * (max^(1-k) - min^(1-k)) )^(1/(1-k))
+  const oneMinusK = 1 - k;
+  const minPow = Math.pow(min, oneMinusK);
+  const maxPow = Math.pow(max, oneMinusK);
+  return Math.pow(minPow + u * (maxPow - minPow), 1 / oneMinusK);
 }
 
 // Triangular with auto mode: mode = min + 0.20 * (max - min)
@@ -218,8 +234,8 @@ export function runSimpleSimulation(
     const u1 = rng.next();
     const u2 = rng.next();
     
-    // FDV: log-uniform
-    const fdv = sampleLogUniform(fdvMin, fdvMax, u1);
+    // FDV: k-weighted power-law sampling based on rarity slider
+    const fdv = sampleFDVWithRarity(fdvMin, fdvMax, params.fdvRarity, u1);
     
     // Drop%: triangular with mode biased low (20% into range)
     const dropPct = sampleTriangularAutoMode(dropMin, dropMax, u2);
@@ -278,5 +294,6 @@ export const DEFAULT_PARAMS: SimpleSimulationParams = {
   fdvMaxM: 500,      // 500M
   dropMinPct: 1,     // 1%
   dropMaxPct: 5,     // 5%
+  fdvRarity: 50,     // Default mid-range rarity (k=1.75)
   numSimulations: 200000
 };
