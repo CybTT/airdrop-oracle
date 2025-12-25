@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import runItImage from "@/assets/run_it.png";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Play, AlertTriangle, Loader2 } from "lucide-react";
@@ -165,18 +166,12 @@ export function SimpleMonteCarloSimulator() {
                 </div>
               </>
             ) : (
-              <div className="h-96 flex items-center justify-center border-2 border-dashed rounded-lg bg-muted/20">
-                <div className="text-center space-y-3">
-                  <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center mx-auto">
-                    <Play className="h-8 w-8 text-muted-foreground/50" />
-                  </div>
-                  <div>
-                    <p className="text-lg font-medium text-muted-foreground">Ready to Simulate</p>
-                    <p className="text-sm text-muted-foreground/70 mt-1">
-                      Enter your assumptions and click "Run Simulation"
-                    </p>
-                  </div>
-                </div>
+              <div className="h-96 flex items-center justify-center rounded-lg bg-black">
+                <img 
+                  src={runItImage} 
+                  alt="Run It" 
+                  className="max-h-80 object-contain"
+                />
               </div>
             )}
           </div>
