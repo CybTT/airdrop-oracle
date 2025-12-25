@@ -166,12 +166,15 @@ export function SimpleMonteCarloSimulator() {
                 </div>
               </>
             ) : (
-              <div className="h-96 flex items-center justify-center rounded-lg bg-black">
-                <img 
-                  src={runItImage} 
-                  alt="Run It" 
-                  className="max-h-80 object-contain"
-                />
+              <div className="h-96 flex items-center justify-center rounded-lg border bg-card">
+                <div className="text-center space-y-4">
+                  <p className="text-lg font-semibold text-foreground">Ready to Run</p>
+                  <img 
+                    src={runItImage} 
+                    alt="Run It" 
+                    className="max-h-64 object-contain mx-auto"
+                  />
+                </div>
               </div>
             )}
           </div>
