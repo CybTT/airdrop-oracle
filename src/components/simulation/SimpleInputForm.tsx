@@ -86,13 +86,50 @@ export function SimpleInputForm({ params, errors, onParamChange }: SimpleInputFo
           </div>
         </div>
 
-        {/* Drop% Info - Fixed Distribution */}
-        <div className="p-3 bg-muted/50 rounded-lg border border-border/50">
-          <p className="text-sm font-medium text-foreground mb-1">Drop% Distribution</p>
-          <p className="text-xs text-muted-foreground">
-            Fixed at 5%–50% using a realistic launch behavior model. Most airdrops cluster around conservative values (5-10%), with larger drops increasingly rare.
-          </p>
+        {/* Drop% Range */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="dropMinPct" className="text-sm font-medium">
+              Drop% Min
+            </Label>
+            <div className="relative">
+              <Input
+                id="dropMinPct"
+                type="number"
+                step="0.1"
+                value={params.dropMinPct}
+                onChange={(e) => onParamChange('dropMinPct', parseFloat(e.target.value) || 0)}
+                className="pr-8 font-mono"
+                placeholder="5"
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>
+            </div>
+            <FieldError errors={errors} field="dropMinPct" />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="dropMaxPct" className="text-sm font-medium">
+              Drop% Max
+            </Label>
+            <div className="relative">
+              <Input
+                id="dropMaxPct"
+                type="number"
+                step="0.1"
+                value={params.dropMaxPct}
+                onChange={(e) => onParamChange('dropMaxPct', parseFloat(e.target.value) || 0)}
+                className="pr-8 font-mono"
+                placeholder="50"
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>
+            </div>
+            <FieldError errors={errors} field="dropMaxPct" />
+          </div>
         </div>
+        
+        {/* Drop% Distribution Info */}
+        <p className="text-xs text-muted-foreground px-1">
+          Probabilities shaped within your range: bottom ~33% has rising likelihood, middle ~33% peaks then declines, top ~33% is increasingly rare.
+        </p>
 
         {/* Simulations */}
         <div className="space-y-1.5">

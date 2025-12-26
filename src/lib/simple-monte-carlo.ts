@@ -65,8 +65,18 @@ export function validateParams(params: SimpleSimulationParams): ValidationError[
     errors.push({ field: 'fdvMaxM', message: 'FDV Max must be greater than FDV Min' });
   }
 
-  // Drop% is now fixed at 5%-50% internally - no user validation needed
-  // The model uses a fixed realistic launch behavior distribution
+  // Drop% validation: 0 < min < max ≤ 100
+  if (params.dropMinPct <= 0) {
+    errors.push({ field: 'dropMinPct', message: 'Drop% Min must be greater than 0' });
+  }
+
+  if (params.dropMaxPct <= 0 || params.dropMaxPct > 100) {
+    errors.push({ field: 'dropMaxPct', message: 'Drop% Max must be between 0 and 100' });
+  }
+
+  if (params.dropMaxPct <= params.dropMinPct) {
+    errors.push({ field: 'dropMaxPct', message: 'Drop% Max must be greater than Drop% Min' });
+  }
 
   if (params.numSimulations < 1000) {
     errors.push({ field: 'numSimulations', message: 'Simulations must be at least 1,000' });
@@ -204,104 +214,119 @@ function sampleFDVMixture(fdvZones: FDVZones, u1: number, u2: number): number {
 }
 
 // ============================================
-// DROP % DISTRIBUTION — 3-ZONE PROBABILITY MODEL
+// DROP % DISTRIBUTION — RANGE-INVARIANT 3-GROUP MODEL
 // ============================================
-// Designed to reflect real-world token launch behavior
-// Drop% values are always between 5% and 50%
+// All probability logic operates on normalized t ∈ [0,1]
+// Then maps back to Drop% = pMin + t * width
+//
+// Group boundaries in normalized space (fixed):
+// - Group 1: t ∈ [0.00, 0.33] — "Psychological Floor" (50% weight)
+// - Group 2: t ∈ (0.33, 0.66] — "Success & Balance" (40% weight)
+// - Group 3: t ∈ (0.66, 1.00] — "Generosity Spike" (10% weight)
 
-interface DropZone {
-  min: number;  // as decimal (0.05 = 5%)
-  max: number;
-  weight: number;
+// Group 1 — "Psychological Floor" (50%)
+// t range: [0.00, 0.33]
+// Shape: probability increases with t (toward the top of this band)
+// PDF ∝ (t - t0) where t0 = 0.00, using inverse-CDF sampling
+function sampleGroup1Normalized(u: number): number {
+  const t0 = 0.00;
+  const t1 = 0.33;
+  const range = t1 - t0;
+  // Linear increasing: PDF ∝ (t - t0)
+  // CDF: F(t) = ((t - t0) / range)^2
+  // Inverse CDF: t = t0 + range * sqrt(u)
+  return t0 + range * Math.sqrt(u);
 }
 
-// Group 1 — Psychological Floor (5%-10%)
-// Weight: 50%, probability increases within range (linear increasing density)
-function sampleGroup1(u: number): number {
-  const min = 0.05;
-  const max = 0.10;
-  const range = max - min;
-  // Linear increasing: PDF proportional to (x - min)
-  // CDF: F(x) = ((x - min) / range)^2
-  // Inverse CDF: x = min + range * sqrt(u)
-  return min + range * Math.sqrt(u);
-}
-
-// Group 2 — Success & Balance (10%-20%)
-// Weight: 40%
-// 10%-12%: flat (uniform) high-probability zone
-// 12%-20%: probability decreases linearly
-function sampleGroup2(u: number): number {
-  const flatMin = 0.10;
-  const flatMax = 0.12;
-  const declineMin = 0.12;
-  const declineMax = 0.20;
+// Group 2 — "Success & Balance" (40%)
+// t range: (0.33, 0.66]
+// Shape: First 25% of band is flat (uniform), remaining 75% declines linearly
+function sampleGroup2Normalized(u: number): number {
+  const a = 0.33;  // band start
+  const b = 0.66;  // band end
+  const bandWidth = b - a;
+  const plateauEnd = a + 0.25 * bandWidth;  // First 25% is plateau
   
-  // Calculate relative weights within group
-  const flatWidth = flatMax - flatMin;  // 0.02
-  const declineWidth = declineMax - declineMin;  // 0.08
+  // Calculate relative areas/weights within group
+  // Plateau: uniform with height h
+  // Decline: linear from height h at plateauEnd to 0 at b
+  const plateauWidth = plateauEnd - a;
+  const declineWidth = b - plateauEnd;
   
-  // For linear decreasing from declineMin to declineMax:
-  // Area under triangle = 0.5 * base * height
-  // We normalize so flat zone has height 1
-  // Decline zone: starts at height 1 at declineMin, drops to 0 at declineMax
-  // Area of flat = flatWidth * 1 = 0.02
-  // Area of decline = 0.5 * declineWidth * 1 = 0.04
-  // Total = 0.06
-  
-  const flatArea = flatWidth;
+  // Area of plateau = plateauWidth * h
+  // Area of decline (triangle) = 0.5 * declineWidth * h
+  // We can set h=1 for normalization
+  const plateauArea = plateauWidth;
   const declineArea = 0.5 * declineWidth;
-  const totalArea = flatArea + declineArea;
+  const totalArea = plateauArea + declineArea;
   
-  const flatWeight = flatArea / totalArea;  // ~0.333
+  const plateauWeight = plateauArea / totalArea;
   
-  if (u < flatWeight) {
-    // Sample from flat zone (uniform)
-    const uNorm = u / flatWeight;
-    return flatMin + uNorm * (flatMax - flatMin);
+  if (u < plateauWeight) {
+    // Sample from plateau zone (uniform)
+    const uNorm = u / plateauWeight;
+    return a + uNorm * plateauWidth;
   } else {
     // Sample from declining zone (linear decreasing)
-    const uNorm = (u - flatWeight) / (1 - flatWeight);
-    // PDF proportional to (declineMax - x)
-    // Inverse CDF: x = declineMax - sqrt((declineMax - declineMin)^2 * (1 - u))
-    return declineMax - Math.sqrt(declineWidth * declineWidth * (1 - uNorm));
+    const uNorm = (u - plateauWeight) / (1 - plateauWeight);
+    // PDF proportional to (b - t)
+    // Inverse CDF: t = b - sqrt((b - plateauEnd)^2 * (1 - u))
+    return b - Math.sqrt(declineWidth * declineWidth * (1 - uNorm));
   }
 }
 
-// Group 3 — Generosity Spike (20%-50%)
-// Weight: 10%, probability decreases rapidly (exponential decay)
-function sampleGroup3(u: number): number {
-  const min = 0.20;
-  const max = 0.50;
-  const range = max - min;
+// Group 3 — "Generosity Spike" (10%)
+// t range: (0.66, 1.00]
+// Shape: exponential decay, rapid decrease as t increases
+// PDF ∝ exp(-k * (t - 0.66)), using truncated exponential sampling
+function sampleGroup3Normalized(u: number): number {
+  const a = 0.66;  // band start
+  const b = 1.00;  // band end
+  const range = b - a;
+  const k = 8;  // decay rate (strong decay)
   
-  // Exponential decay: higher density near min, very low near max
-  // Using inverse exponential CDF with lambda chosen so 99% falls in range
-  // F(x) = 1 - exp(-lambda * (x - min))
-  // Inverse: x = min - ln(1 - u) / lambda
-  // Choose lambda = 10 for rapid decay (most values near 20%)
-  const lambda = 10;
+  // Truncated exponential on [0, range] then shift by a
+  // CDF: F(x) = (1 - exp(-k*x)) / (1 - exp(-k*range))
+  // Inverse CDF: x = -ln(1 - u*(1 - exp(-k*range))) / k
+  const normFactor = 1 - Math.exp(-k * range);
+  const sample = -Math.log(1 - u * normFactor) / k;
   
-  // Sample and clamp to range
-  let sample = min - Math.log(1 - u * (1 - Math.exp(-lambda * range))) / lambda;
-  return Math.min(Math.max(sample, min), max);
+  // Map to [a, b] and clamp
+  return Math.min(Math.max(a + sample, a), b);
 }
 
-// Sample Drop% from 3-zone mixture distribution
-function sampleDropPercentage(u1: number, u2: number): number {
-  // Group weights
+// Sample normalized t from 3-group mixture distribution
+function sampleNormalizedT(u1: number, u2: number): number {
+  // Group weights (fixed)
   const w1 = 0.50;  // Psychological Floor
   const w2 = 0.40;  // Success & Balance
-  const w3 = 0.10;  // Generosity Spike
+  // w3 = 0.10 (Generosity Spike, implicit)
   
   // Select group based on u1
   if (u1 < w1) {
-    return sampleGroup1(u2);
+    return sampleGroup1Normalized(u2);
   } else if (u1 < w1 + w2) {
-    return sampleGroup2(u2);
+    return sampleGroup2Normalized(u2);
   } else {
-    return sampleGroup3(u2);
+    return sampleGroup3Normalized(u2);
   }
+}
+
+// Sample Drop% using range-invariant model
+// Maps normalized t ∈ [0,1] to Drop% = pMin + t * width
+function sampleDropPercentage(pMin: number, pMax: number, u1: number, u2: number): number {
+  const width = pMax - pMin;
+  
+  // Fallback to uniform for extremely narrow ranges
+  if (width < 0.001) {
+    return pMin + u2 * width;
+  }
+  
+  // Sample normalized t using 3-group behavioral model
+  const t = sampleNormalizedT(u1, u2);
+  
+  // Map back to actual drop percentage
+  return pMin + t * width;
 }
 
 // Percentile from sorted array
@@ -377,9 +402,9 @@ export function runSimpleSimulation(
 ): SimpleSimulationResults {
   const startTime = performance.now();
   
-  // Drop% is fixed at 5%-50% using the 3-zone model
-  const fixedDropMin = 0.05;
-  const fixedDropMax = 0.50;
+  // Convert user's Drop% range to decimals
+  const pMin = params.dropMinPct / 100;
+  const pMax = params.dropMaxPct / 100;
   
   // Calculate FDV zones based on user's min/max
   const fdvZones = calculateFDVZones(params.fdvMinM, params.fdvMaxM);
@@ -395,14 +420,14 @@ export function runSimpleSimulation(
   for (let i = 0; i < params.numSimulations; i++) {
     const u1 = rng.next(); // For FDV zone selection
     const u2 = rng.next(); // For within-zone FDV sampling
-    const u3 = rng.next(); // For Drop% zone selection
-    const u4 = rng.next(); // For within-zone Drop% sampling
+    const u3 = rng.next(); // For Drop% group selection
+    const u4 = rng.next(); // For within-group Drop% sampling
     
     // FDV: 3-part mixture distribution
     const fdv = sampleFDVMixture(fdvZones, u1, u2);
     
-    // Drop%: 3-zone realistic launch behavior model (5%-50%)
-    const dropPct = sampleDropPercentage(u3, u4);
+    // Drop%: Range-invariant 3-group behavioral model
+    const dropPct = sampleDropPercentage(pMin, pMax, u3, u4);
     
     // Core formula: value_per_nft = (FDV × Drop%) / NFT_Supply
     values[i] = (fdv * dropPct) / params.nftSupply;
@@ -435,11 +460,11 @@ export function runSimpleSimulation(
   // Thresholds
   const thresholdProbs = calcThresholdProbs(sorted, thresholds);
   
-  // Anchors (use fixed drop% range for worst/best case)
+  // Anchors (use user's drop% range for worst/best case)
   const fdvMin = params.fdvMinM * 1_000_000;
   const fdvMax = params.fdvMaxM * 1_000_000;
-  const worstCase = (fdvMin * fixedDropMin) / params.nftSupply;
-  const bestCase = (fdvMax * fixedDropMax) / params.nftSupply;
+  const worstCase = (fdvMin * pMin) / params.nftSupply;
+  const bestCase = (fdvMax * pMax) / params.nftSupply;
   
   const executionTimeMs = performance.now() - startTime;
   

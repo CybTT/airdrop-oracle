@@ -135,19 +135,19 @@ export function SimpleMonteCarloSimulator() {
                     <div className="p-3 bg-muted/50 rounded-lg space-y-2">
                       <p className="font-medium">Drop% Distribution</p>
                       <p className="text-xs text-muted-foreground italic mb-2">
-                        Drop % is estimated using a realistic launch behavior model
+                        Your Min–Max range is divided into 3 behavioral zones. The simulator shapes probabilities inside your chosen range.
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        • <strong>Psychological floor:</strong> 5%–10% (50% weight, probability increases toward 10%)
+                        • <strong>Psychological floor:</strong> Bottom ~33% of your range (50% weight, probability rises toward top of this band)
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        • <strong>Success & balance zone:</strong> 10%–20% (40% weight, flat around 10–12%, then declining)
+                        • <strong>Success & balance zone:</strong> Middle ~33% of your range (40% weight, short flat plateau early, then declining)
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        • <strong>Generosity spike:</strong> 20%–50% (10% weight, probability drops rapidly as percentage increases)
+                        • <strong>Generosity spike:</strong> Top ~33% of your range (10% weight, probability drops rapidly toward maximum)
                       </p>
                       <p className="text-xs text-muted-foreground mt-2 italic">
-                        Most projects cluster around conservative airdrops. Higher percentages are possible but increasingly rare. Very large airdrops represent exceptional, high-risk decisions.
+                        Most projects cluster around conservative airdrops. Higher percentages are possible but increasingly rare.
                       </p>
                     </div>
                     <div className="p-3 bg-muted/50 rounded-lg space-y-2">
