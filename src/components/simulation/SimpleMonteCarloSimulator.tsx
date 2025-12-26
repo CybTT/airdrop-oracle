@@ -133,6 +133,24 @@ export function SimpleMonteCarloSimulator() {
                 <AccordionContent className="px-4 pb-4">
                   <div className="space-y-3 text-sm">
                     <div className="p-3 bg-muted/50 rounded-lg space-y-2">
+                      <p className="font-medium">Drop% Distribution</p>
+                      <p className="text-xs text-muted-foreground italic mb-2">
+                        Drop % is estimated using a realistic launch behavior model
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        • <strong>Psychological floor:</strong> 5%–10% (50% weight, probability increases toward 10%)
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        • <strong>Success & balance zone:</strong> 10%–20% (40% weight, flat around 10–12%, then declining)
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        • <strong>Generosity spike:</strong> 20%–50% (10% weight, probability drops rapidly as percentage increases)
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-2 italic">
+                        Most projects cluster around conservative airdrops. Higher percentages are possible but increasingly rare. Very large airdrops represent exceptional, high-risk decisions.
+                      </p>
+                    </div>
+                    <div className="p-3 bg-muted/50 rounded-lg space-y-2">
                       <p className="font-medium">FDV Distribution</p>
                       <p className="text-xs text-muted-foreground">
                         • <strong>High probability zone:</strong> First $30M above min (75% weight, uniform)
@@ -144,18 +162,12 @@ export function SimpleMonteCarloSimulator() {
                         • <strong>Rare tail:</strong> $200M–$300M (1% weight, if max ≥ $200M)
                       </p>
                     </div>
-                    <div className="p-3 bg-muted/50 rounded-lg space-y-2">
-                      <p className="font-medium">Drop% Distribution</p>
-                      <p className="text-xs text-muted-foreground">
-                        Triangular distribution biased toward lower end (mode at 20% of range)
-                      </p>
-                    </div>
                     <div className="p-3 bg-muted/50 rounded-lg">
                       <p className="text-xs text-muted-foreground">
                         <strong>Formula:</strong>
                         <br />
                         <code className="text-xs font-mono">
-                          value = (FDV × Drop%) / NFT_Supply
+                          value_per_nft = (FDV × Drop%) / NFT_Supply
                         </code>
                       </p>
                     </div>

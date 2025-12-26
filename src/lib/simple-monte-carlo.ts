@@ -65,17 +65,8 @@ export function validateParams(params: SimpleSimulationParams): ValidationError[
     errors.push({ field: 'fdvMaxM', message: 'FDV Max must be greater than FDV Min' });
   }
 
-  if (params.dropMinPct <= 0 || params.dropMinPct >= 100) {
-    errors.push({ field: 'dropMinPct', message: 'Drop% Min must be between 0 and 100' });
-  }
-
-  if (params.dropMaxPct <= 0 || params.dropMaxPct >= 100) {
-    errors.push({ field: 'dropMaxPct', message: 'Drop% Max must be between 0 and 100' });
-  }
-
-  if (params.dropMaxPct <= params.dropMinPct) {
-    errors.push({ field: 'dropMaxPct', message: 'Drop% Max must be greater than Drop% Min' });
-  }
+  // Drop% is now fixed at 5%-50% internally - no user validation needed
+  // The model uses a fixed realistic launch behavior distribution
 
   if (params.numSimulations < 1000) {
     errors.push({ field: 'numSimulations', message: 'Simulations must be at least 1,000' });
@@ -212,14 +203,104 @@ function sampleFDVMixture(fdvZones: FDVZones, u1: number, u2: number): number {
   }
 }
 
-// Triangular with auto mode: mode = min + 0.20 * (max - min)
-function sampleTriangularAutoMode(min: number, max: number, u: number): number {
-  const mode = min + 0.20 * (max - min);
-  const fc = (mode - min) / (max - min);
-  if (u < fc) {
-    return min + Math.sqrt(u * (max - min) * (mode - min));
+// ============================================
+// DROP % DISTRIBUTION — 3-ZONE PROBABILITY MODEL
+// ============================================
+// Designed to reflect real-world token launch behavior
+// Drop% values are always between 5% and 50%
+
+interface DropZone {
+  min: number;  // as decimal (0.05 = 5%)
+  max: number;
+  weight: number;
+}
+
+// Group 1 — Psychological Floor (5%-10%)
+// Weight: 50%, probability increases within range (linear increasing density)
+function sampleGroup1(u: number): number {
+  const min = 0.05;
+  const max = 0.10;
+  const range = max - min;
+  // Linear increasing: PDF proportional to (x - min)
+  // CDF: F(x) = ((x - min) / range)^2
+  // Inverse CDF: x = min + range * sqrt(u)
+  return min + range * Math.sqrt(u);
+}
+
+// Group 2 — Success & Balance (10%-20%)
+// Weight: 40%
+// 10%-12%: flat (uniform) high-probability zone
+// 12%-20%: probability decreases linearly
+function sampleGroup2(u: number): number {
+  const flatMin = 0.10;
+  const flatMax = 0.12;
+  const declineMin = 0.12;
+  const declineMax = 0.20;
+  
+  // Calculate relative weights within group
+  const flatWidth = flatMax - flatMin;  // 0.02
+  const declineWidth = declineMax - declineMin;  // 0.08
+  
+  // For linear decreasing from declineMin to declineMax:
+  // Area under triangle = 0.5 * base * height
+  // We normalize so flat zone has height 1
+  // Decline zone: starts at height 1 at declineMin, drops to 0 at declineMax
+  // Area of flat = flatWidth * 1 = 0.02
+  // Area of decline = 0.5 * declineWidth * 1 = 0.04
+  // Total = 0.06
+  
+  const flatArea = flatWidth;
+  const declineArea = 0.5 * declineWidth;
+  const totalArea = flatArea + declineArea;
+  
+  const flatWeight = flatArea / totalArea;  // ~0.333
+  
+  if (u < flatWeight) {
+    // Sample from flat zone (uniform)
+    const uNorm = u / flatWeight;
+    return flatMin + uNorm * (flatMax - flatMin);
   } else {
-    return max - Math.sqrt((1 - u) * (max - min) * (max - mode));
+    // Sample from declining zone (linear decreasing)
+    const uNorm = (u - flatWeight) / (1 - flatWeight);
+    // PDF proportional to (declineMax - x)
+    // Inverse CDF: x = declineMax - sqrt((declineMax - declineMin)^2 * (1 - u))
+    return declineMax - Math.sqrt(declineWidth * declineWidth * (1 - uNorm));
+  }
+}
+
+// Group 3 — Generosity Spike (20%-50%)
+// Weight: 10%, probability decreases rapidly (exponential decay)
+function sampleGroup3(u: number): number {
+  const min = 0.20;
+  const max = 0.50;
+  const range = max - min;
+  
+  // Exponential decay: higher density near min, very low near max
+  // Using inverse exponential CDF with lambda chosen so 99% falls in range
+  // F(x) = 1 - exp(-lambda * (x - min))
+  // Inverse: x = min - ln(1 - u) / lambda
+  // Choose lambda = 10 for rapid decay (most values near 20%)
+  const lambda = 10;
+  
+  // Sample and clamp to range
+  let sample = min - Math.log(1 - u * (1 - Math.exp(-lambda * range))) / lambda;
+  return Math.min(Math.max(sample, min), max);
+}
+
+// Sample Drop% from 3-zone mixture distribution
+function sampleDropPercentage(u1: number, u2: number): number {
+  // Group weights
+  const w1 = 0.50;  // Psychological Floor
+  const w2 = 0.40;  // Success & Balance
+  const w3 = 0.10;  // Generosity Spike
+  
+  // Select group based on u1
+  if (u1 < w1) {
+    return sampleGroup1(u2);
+  } else if (u1 < w1 + w2) {
+    return sampleGroup2(u2);
+  } else {
+    return sampleGroup3(u2);
   }
 }
 
@@ -296,9 +377,9 @@ export function runSimpleSimulation(
 ): SimpleSimulationResults {
   const startTime = performance.now();
   
-  // Convert inputs
-  const dropMin = params.dropMinPct / 100;     // Convert % to decimal
-  const dropMax = params.dropMaxPct / 100;
+  // Drop% is fixed at 5%-50% using the 3-zone model
+  const fixedDropMin = 0.05;
+  const fixedDropMax = 0.50;
   
   // Calculate FDV zones based on user's min/max
   const fdvZones = calculateFDVZones(params.fdvMinM, params.fdvMaxM);
@@ -312,17 +393,18 @@ export function runSimpleSimulation(
   
   // Run simulation
   for (let i = 0; i < params.numSimulations; i++) {
-    const u1 = rng.next(); // For zone selection
-    const u2 = rng.next(); // For within-zone sampling
-    const u3 = rng.next(); // For drop%
+    const u1 = rng.next(); // For FDV zone selection
+    const u2 = rng.next(); // For within-zone FDV sampling
+    const u3 = rng.next(); // For Drop% zone selection
+    const u4 = rng.next(); // For within-zone Drop% sampling
     
     // FDV: 3-part mixture distribution
     const fdv = sampleFDVMixture(fdvZones, u1, u2);
     
-    // Drop%: triangular with mode biased low (20% into range)
-    const dropPct = sampleTriangularAutoMode(dropMin, dropMax, u3);
+    // Drop%: 3-zone realistic launch behavior model (5%-50%)
+    const dropPct = sampleDropPercentage(u3, u4);
     
-    // Core formula
+    // Core formula: value_per_nft = (FDV × Drop%) / NFT_Supply
     values[i] = (fdv * dropPct) / params.nftSupply;
   }
   
@@ -353,11 +435,11 @@ export function runSimpleSimulation(
   // Thresholds
   const thresholdProbs = calcThresholdProbs(sorted, thresholds);
   
-  // Anchors (use actual user min/max in dollars)
+  // Anchors (use fixed drop% range for worst/best case)
   const fdvMin = params.fdvMinM * 1_000_000;
   const fdvMax = params.fdvMaxM * 1_000_000;
-  const worstCase = (fdvMin * dropMin) / params.nftSupply;
-  const bestCase = (fdvMax * dropMax) / params.nftSupply;
+  const worstCase = (fdvMin * fixedDropMin) / params.nftSupply;
+  const bestCase = (fdvMax * fixedDropMax) / params.nftSupply;
   
   const executionTimeMs = performance.now() - startTime;
   
