@@ -59,11 +59,28 @@ export function SimpleMonteCarloSimulator() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b bg-card">
-        <div className="container mx-auto px-4 py-4">
-          <h1 className="text-2xl font-bold text-foreground">NFT Airdrop Estimator</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Monte Carlo simulation to estimate your per-NFT airdrop value
-          </p>
+        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">NFT Airdrop Estimator</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Monte Carlo simulation to estimate your per-NFT airdrop value
+            </p>
+          </div>
+          <a
+            href="https://x.com/cybttx"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-card border border-border hover:bg-muted transition-colors"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              className="h-5 w-5 fill-foreground"
+              aria-hidden="true"
+            >
+              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+            </svg>
+            <span className="text-sm font-medium text-foreground">@cybttx</span>
+          </a>
         </div>
       </header>
 
