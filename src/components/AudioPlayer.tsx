@@ -16,6 +16,22 @@ const AudioPlayer = () => {
     }
   }, [volume]);
 
+  // Auto-play on page load
+  useEffect(() => {
+    const playAudio = async () => {
+      if (audioRef.current) {
+        try {
+          await audioRef.current.play();
+          setIsPlaying(true);
+        } catch (error) {
+          // Browser blocked autoplay, user needs to interact first
+          console.log('Autoplay blocked, waiting for user interaction');
+        }
+      }
+    };
+    playAudio();
+  }, []);
+
   const togglePlay = () => {
     if (audioRef.current) {
       if (isPlaying) {
