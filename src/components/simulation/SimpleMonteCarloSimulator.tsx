@@ -133,21 +133,21 @@ export function SimpleMonteCarloSimulator() {
                 <AccordionContent className="px-4 pb-4">
                   <div className="space-y-3 text-sm">
                     <div className="p-3 bg-muted/50 rounded-lg space-y-2">
-                      <p className="font-medium">Drop% Distribution</p>
+                      <p className="font-medium">Airdrop % Distribution</p>
                       <p className="text-xs text-muted-foreground italic mb-2">
                         Your Min–Max range is divided into 3 behavioral zones. The simulator shapes probabilities inside your chosen range.
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        • <strong>Psychological floor:</strong> Bottom ~33% of your range (50% weight, probability rises toward top of this band)
+                        • <strong>Range A:</strong> First ~11% of your range (50% weight, probability increases within this zone — higher % → higher chance)
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        • <strong>Success & balance zone:</strong> Middle ~33% of your range (40% weight, short flat plateau early, then declining)
+                        • <strong>Range B:</strong> From ~11% to ~44% of your range (40% weight, short flat plateau early, then declining — higher % → lower chance)
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        • <strong>Generosity spike:</strong> Top ~33% of your range (10% weight, probability drops rapidly toward maximum)
+                        • <strong>Range C:</strong> From ~44% to 100% of your range (10% weight, probability drops rapidly toward maximum)
                       </p>
                       <p className="text-xs text-muted-foreground mt-2 italic">
-                        Most projects cluster around conservative airdrops. Higher percentages are possible but increasingly rare.
+                        Higher airdrop percentages remain possible, but become significantly less likely as they approach your upper limit.
                       </p>
                     </div>
                     <div className="p-3 bg-muted/50 rounded-lg space-y-2">
