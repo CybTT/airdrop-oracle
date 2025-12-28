@@ -214,48 +214,57 @@ function sampleFDVMixture(fdvZones: FDVZones, u1: number, u2: number): number {
 }
 
 // ============================================
-// DROP % DISTRIBUTION — RANGE-INVARIANT 3-GROUP MODEL
+// DROP % DISTRIBUTION — RANGE-INVARIANT 3-ZONE MODEL
 // ============================================
-// All probability logic operates on normalized t ∈ [0,1]
-// Then maps back to Drop% = pMin + t * width
+// Based on original 5-50 design where:
+// - Zone A: 5-10 (50%) → f1 = (10-5)/(50-5) = 5/45 ≈ 0.1111
+// - Zone B: 10-25 (40%) → f2 = (25-5)/(50-5) = 20/45 ≈ 0.4444
+// - Zone C: 25-50 (10%)
 //
-// Group boundaries in normalized space (fixed):
-// - Group 1: t ∈ [0.00, 0.33] — "Psychological Floor" (50% weight)
-// - Group 2: t ∈ (0.33, 0.66] — "Success & Balance" (40% weight)
-// - Group 3: t ∈ (0.66, 1.00] — "Generosity Spike" (10% weight)
+// For any user range [pMin, pMax], zone boundaries are:
+// z0 = pMin
+// z1 = pMin + f1 * W  (where W = pMax - pMin)
+// z2 = pMin + f2 * W
+// z3 = pMax
 
-// Group 1 — "Psychological Floor" (50%)
-// t range: [0.00, 0.33]
-// Shape: probability increases with t (toward the top of this band)
-// PDF ∝ (t - t0) where t0 = 0.00, using inverse-CDF sampling
-function sampleGroup1Normalized(u: number): number {
-  const t0 = 0.00;
-  const t1 = 0.33;
-  const range = t1 - t0;
-  // Linear increasing: PDF ∝ (t - t0)
-  // CDF: F(t) = ((t - t0) / range)^2
-  // Inverse CDF: t = t0 + range * sqrt(u)
-  return t0 + range * Math.sqrt(u);
+// Fixed fractional breakpoints (derived from 5-50 original design)
+const F1 = 5 / 45;   // ≈ 0.1111111111
+const F2 = 20 / 45;  // ≈ 0.4444444444
+
+// Zone B plateau fraction: (12-10)/(25-10) = 2/15 ≈ 0.1333
+const PLATEAU_FRACTION = 2 / 15;
+
+// Zone weights (fixed and invariant)
+const W_A = 0.50;  // Psychological Floor
+const W_B = 0.40;  // Success & Balance
+const W_C = 0.10;  // Generosity Spike
+
+// Zone A — "Psychological Floor" (50% weight)
+// Range: [z0, z1]
+// Shape: probability increases with value (toward z1)
+// PDF ∝ (x - z0), using inverse-CDF sampling
+function sampleZoneA(z0: number, z1: number, u: number): number {
+  const range = z1 - z0;
+  // Linear increasing: PDF ∝ (x - z0)
+  // CDF: F(x) = ((x - z0) / range)^2
+  // Inverse CDF: x = z0 + range * sqrt(u)
+  return z0 + range * Math.sqrt(u);
 }
 
-// Group 2 — "Success & Balance" (40%)
-// t range: (0.33, 0.66]
-// Shape: First 25% of band is flat (uniform), remaining 75% declines linearly
-function sampleGroup2Normalized(u: number): number {
-  const a = 0.33;  // band start
-  const b = 0.66;  // band end
-  const bandWidth = b - a;
-  const plateauEnd = a + 0.25 * bandWidth;  // First 25% is plateau
+// Zone B — "Success & Balance" (40% weight)
+// Range: (z1, z2]
+// Shape: Short flat plateau at start, then linearly declining
+// Plateau ends at z1 + PLATEAU_FRACTION * (z2 - z1)
+function sampleZoneB(z1: number, z2: number, u: number): number {
+  const bandWidth = z2 - z1;
+  const plateauEnd = z1 + PLATEAU_FRACTION * bandWidth;
   
-  // Calculate relative areas/weights within group
-  // Plateau: uniform with height h
-  // Decline: linear from height h at plateauEnd to 0 at b
-  const plateauWidth = plateauEnd - a;
-  const declineWidth = b - plateauEnd;
+  // Calculate relative areas/weights within zone
+  const plateauWidth = plateauEnd - z1;
+  const declineWidth = z2 - plateauEnd;
   
-  // Area of plateau = plateauWidth * h
+  // Area of plateau = plateauWidth * h (h=1 for normalization)
   // Area of decline (triangle) = 0.5 * declineWidth * h
-  // We can set h=1 for normalization
   const plateauArea = plateauWidth;
   const declineArea = 0.5 * declineWidth;
   const totalArea = plateauArea + declineArea;
@@ -263,70 +272,59 @@ function sampleGroup2Normalized(u: number): number {
   const plateauWeight = plateauArea / totalArea;
   
   if (u < plateauWeight) {
-    // Sample from plateau zone (uniform)
+    // Sample from plateau (uniform)
     const uNorm = u / plateauWeight;
-    return a + uNorm * plateauWidth;
+    return z1 + uNorm * plateauWidth;
   } else {
     // Sample from declining zone (linear decreasing)
     const uNorm = (u - plateauWeight) / (1 - plateauWeight);
-    // PDF proportional to (b - t)
-    // Inverse CDF: t = b - sqrt((b - plateauEnd)^2 * (1 - u))
-    return b - Math.sqrt(declineWidth * declineWidth * (1 - uNorm));
+    // PDF proportional to (z2 - x)
+    // Inverse CDF: x = z2 - sqrt(declineWidth^2 * (1 - u))
+    return z2 - Math.sqrt(declineWidth * declineWidth * (1 - uNorm));
   }
 }
 
-// Group 3 — "Generosity Spike" (10%)
-// t range: (0.66, 1.00]
-// Shape: exponential decay, rapid decrease as t increases
-// PDF ∝ exp(-k * (t - 0.66)), using truncated exponential sampling
-function sampleGroup3Normalized(u: number): number {
-  const a = 0.66;  // band start
-  const b = 1.00;  // band end
-  const range = b - a;
+// Zone C — "Generosity Spike" (10% weight)
+// Range: (z2, z3]
+// Shape: exponential decay, rapid decrease as value increases
+// PDF ∝ exp(-k * (x - z2)), using truncated exponential sampling
+function sampleZoneC(z2: number, z3: number, u: number): number {
+  const range = z3 - z2;
   const k = 8;  // decay rate (strong decay)
   
-  // Truncated exponential on [0, range] then shift by a
+  // Truncated exponential on [0, range] then shift by z2
   // CDF: F(x) = (1 - exp(-k*x)) / (1 - exp(-k*range))
   // Inverse CDF: x = -ln(1 - u*(1 - exp(-k*range))) / k
   const normFactor = 1 - Math.exp(-k * range);
   const sample = -Math.log(1 - u * normFactor) / k;
   
-  // Map to [a, b] and clamp
-  return Math.min(Math.max(a + sample, a), b);
+  // Map to [z2, z3] and clamp
+  return Math.min(Math.max(z2 + sample, z2), z3);
 }
 
-// Sample normalized t from 3-group mixture distribution
-function sampleNormalizedT(u1: number, u2: number): number {
-  // Group weights (fixed)
-  const w1 = 0.50;  // Psychological Floor
-  const w2 = 0.40;  // Success & Balance
-  // w3 = 0.10 (Generosity Spike, implicit)
-  
-  // Select group based on u1
-  if (u1 < w1) {
-    return sampleGroup1Normalized(u2);
-  } else if (u1 < w1 + w2) {
-    return sampleGroup2Normalized(u2);
-  } else {
-    return sampleGroup3Normalized(u2);
-  }
-}
-
-// Sample Drop% using range-invariant model
-// Maps normalized t ∈ [0,1] to Drop% = pMin + t * width
+// Sample Drop% using range-invariant 3-zone model
 function sampleDropPercentage(pMin: number, pMax: number, u1: number, u2: number): number {
-  const width = pMax - pMin;
+  const W = pMax - pMin;
   
   // Fallback to uniform for extremely narrow ranges
-  if (width < 0.001) {
-    return pMin + u2 * width;
+  if (W < 0.0001) {
+    return pMin + u2 * W;
   }
   
-  // Sample normalized t using 3-group behavioral model
-  const t = sampleNormalizedT(u1, u2);
+  // Calculate zone boundaries using fixed fractional breakpoints
+  const z0 = pMin;
+  const z1 = pMin + F1 * W;
+  const z2 = pMin + F2 * W;
+  const z3 = pMax;
   
-  // Map back to actual drop percentage
-  return pMin + t * width;
+  // Select zone based on u1 and fixed weights
+  if (u1 < W_A) {
+    return sampleZoneA(z0, z1, u2);
+  } else if (u1 < W_A + W_B) {
+    return sampleZoneB(z1, z2, u2);
+  } else {
+    return sampleZoneC(z2, z3, u2);
+  }
 }
 
 // Percentile from sorted array
