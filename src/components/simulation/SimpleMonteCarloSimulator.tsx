@@ -46,10 +46,15 @@ export function SimpleMonteCarloSimulator() {
       <header className="border-b bg-card">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">NFT Airdrop Estimator</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Monte Carlo simulation to estimate your per-NFT airdrop value
-            </p>
+            <h1 className="text-2xl font-bold text-foreground">Tedism Probability Lab</h1>
+            <p className="text-sm text-muted-foreground mt-1">Tedistic Monte Carlo simulation for per NFT airdrop outcomes
+
+
+
+
+
+
+          </p>
           </div>
           <a href="https://x.com/cybttx" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2 rounded-lg bg-card border border-border hover:bg-muted transition-colors">
             <svg viewBox="0 0 24 24" className="h-5 w-5 fill-foreground" aria-hidden="true">
