@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Plus, AlertCircle, TrendingUp, Percent } from "lucide-react";
 import { RangeCard } from "./RangeCard";
-
+import { DistributionPreviewChart } from "./DistributionPreviewChart";
 interface AdvancedInputFormProps {
   params: AdvancedSimulationParams;
   errors: AdvancedValidationError[];
@@ -144,6 +144,12 @@ export function AdvancedInputForm({ params, errors, onParamsChange }: AdvancedIn
             </p>
           </CardHeader>
           <CardContent className="space-y-3">
+            {/* Distribution Preview Chart */}
+            <div className="mb-4">
+              <p className="text-xs font-medium text-muted-foreground mb-2">Distribution Preview</p>
+              <DistributionPreviewChart ranges={params.fdvRanges} type="fdv" />
+            </div>
+            
             {params.fdvRanges.length === 0 ? (
               <div className="p-4 border border-dashed rounded-lg text-center text-sm text-muted-foreground">
                 Add at least one FDV range to run simulation
@@ -198,6 +204,12 @@ export function AdvancedInputForm({ params, errors, onParamsChange }: AdvancedIn
             </p>
           </CardHeader>
           <CardContent className="space-y-3">
+            {/* Distribution Preview Chart */}
+            <div className="mb-4">
+              <p className="text-xs font-medium text-muted-foreground mb-2">Distribution Preview</p>
+              <DistributionPreviewChart ranges={params.dropRanges} type="drop" />
+            </div>
+            
             {params.dropRanges.length === 0 ? (
               <div className="p-4 border border-dashed rounded-lg text-center text-sm text-muted-foreground">
                 Add at least one Airdrop % range to run simulation
