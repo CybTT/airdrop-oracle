@@ -77,12 +77,11 @@ function computeDensity(
   }
 }
 
-// Compute normalized weights from user-defined weights
-function computeWeights(ranges: CustomRange[]): number[] {
-  const weights = ranges.map((r) => Math.max(0, r.weight));
-  const total = weights.reduce((a, b) => a + b, 0);
-  if (total === 0) return ranges.map(() => 1 / ranges.length);
-  return weights.map((w) => w / total);
+// Get qualitative density label
+function getDensityLabel(value: number): string {
+  if (value >= 0.7) return "High";
+  if (value >= 0.3) return "Medium";
+  return "Low";
 }
 
 export function DistributionPreviewChart({
@@ -100,38 +99,37 @@ export function DistributionPreviewChart({
 
     if (globalMax <= globalMin) return [];
 
-    // Compute weights
-    const weights = computeWeights(ranges);
-
-    // Create grid
-    const data: Record<string, number>[] = [];
+    // Step 1: Compute raw densities for each range on the grid
+    const rawDensities: number[][] = [];
+    const grid: number[] = [];
     
     for (let i = 0; i < GRID_POINTS; i++) {
       const x = globalMin + (i * (globalMax - globalMin)) / (GRID_POINTS - 1);
-      const point: Record<string, number> = { x };
+      grid.push(x);
+    }
 
-      // Compute each range's weighted density
-      for (let j = 0; j < ranges.length; j++) {
-        const density = computeDensity(x, ranges[j]) * weights[j];
-        point[`range${j}`] = density;
+    for (let j = 0; j < ranges.length; j++) {
+      const densities: number[] = [];
+      for (let i = 0; i < GRID_POINTS; i++) {
+        densities.push(computeDensity(grid[i], ranges[j]));
       }
+      rawDensities.push(densities);
+    }
 
+    // Step 2: Normalize EACH range independently so max = 1
+    const normalizedDensities: number[][] = rawDensities.map((densities) => {
+      const maxVal = Math.max(...densities, 0.001);
+      return densities.map((d) => d / maxVal);
+    });
+
+    // Step 3: Build chart data
+    const data: Record<string, number>[] = [];
+    for (let i = 0; i < GRID_POINTS; i++) {
+      const point: Record<string, number> = { x: grid[i] };
+      for (let j = 0; j < ranges.length; j++) {
+        point[`range${j}`] = normalizedDensities[j][i];
+      }
       data.push(point);
-    }
-
-    // Find max value for normalization (across all ranges)
-    let maxValue = 0.001;
-    for (const point of data) {
-      for (let j = 0; j < ranges.length; j++) {
-        maxValue = Math.max(maxValue, point[`range${j}`]);
-      }
-    }
-
-    // Normalize all values so max = 1
-    for (const point of data) {
-      for (let j = 0; j < ranges.length; j++) {
-        point[`range${j}`] = point[`range${j}`] / maxValue;
-      }
     }
 
     return data;
@@ -169,6 +167,14 @@ export function DistributionPreviewChart({
           <YAxis
             hide
             domain={[0, 1.1]}
+            label={{ 
+              value: 'Relative Shape', 
+              angle: -90, 
+              position: 'insideLeft', 
+              fontSize: 9,
+              fill: 'hsl(var(--muted-foreground))',
+              style: { textAnchor: 'middle' }
+            }}
           />
           <Tooltip
             contentStyle={{
@@ -178,13 +184,32 @@ export function DistributionPreviewChart({
               fontSize: "11px",
             }}
             labelStyle={{ color: "hsl(var(--popover-foreground))" }}
-            formatter={(value: number, name: string) => {
-              const idx = parseInt(name.replace("range", ""));
-              return [(value * 100).toFixed(1) + "%", `Range ${idx + 1}`];
+            content={({ active, payload, label }) => {
+              if (!active || !payload?.length) return null;
+              return (
+                <div className="bg-popover border border-border rounded-md p-2 shadow-md text-xs">
+                  <p className="font-medium mb-1">
+                    {type === "fdv" ? `$${Number(label).toFixed(1)}M` : `${Number(label).toFixed(2)}%`}
+                  </p>
+                  {payload.map((entry, idx) => {
+                    const rangeIndex = parseInt(String(entry.dataKey).replace("range", ""));
+                    const range = ranges[rangeIndex];
+                    if (!range) return null;
+                    const value = Number(entry.value) || 0;
+                    return (
+                      <div key={idx} className="flex items-center gap-2">
+                        <span
+                          className="w-2 h-2 rounded-full"
+                          style={{ backgroundColor: entry.color }}
+                        />
+                        <span>R{rangeIndex + 1} ({DISTRIBUTION_LABELS[range.distributionType]}):</span>
+                        <span className="font-medium">{getDensityLabel(value)}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
             }}
-            labelFormatter={(label) =>
-              type === "fdv" ? `$${Number(label).toFixed(1)}M` : `${Number(label).toFixed(1)}%`
-            }
           />
           <Legend
             verticalAlign="top"
