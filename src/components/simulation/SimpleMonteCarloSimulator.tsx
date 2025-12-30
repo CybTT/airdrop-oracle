@@ -1,9 +1,9 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import runItImage from "@/assets/run_it.png";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Play, AlertTriangle, Loader2 } from "lucide-react";
+import { Play, AlertTriangle, Loader2, CheckCircle2 } from "lucide-react";
 import { SimpleSimulationParams, SimpleSimulationResults, ValidationError, DEFAULT_PARAMS, validateParams, runSimpleSimulation } from "@/lib/simple-monte-carlo";
 import { AdvancedSimulationParams, AdvancedValidationError, CustomRange, DEFAULT_ADVANCED_PARAMS, validateAdvancedParams, runAdvancedSimulation } from "@/lib/advanced-monte-carlo";
 import { SimpleInputForm } from "./SimpleInputForm";
@@ -37,7 +37,7 @@ function hasOverlap(ranges: CustomRange[]): boolean {
   return false;
 }
 
-type SimulationMode = 'classic' | 'advanced';
+type SimulationMode = 'classic' | 'advanced' | 'study';
 
 const DEFAULT_THRESHOLDS = [60, 120, 300];
 
@@ -59,6 +59,33 @@ export function SimpleMonteCarloSimulator() {
 
   // Overlap warning state (Advanced mode only)
   const [showOverlapWarning, setShowOverlapWarning] = useState(false);
+
+  // Study tab state
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [hasWatched, setHasWatched] = useState(false);
+
+  // Pause video when leaving Study tab
+  useEffect(() => {
+    if (mode !== 'study' && videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.currentTime = 0;
+    }
+  }, [mode]);
+
+  // Track video progress for "Watched" badge
+  const handleVideoTimeUpdate = useCallback(() => {
+    if (hasWatched) return;
+    const video = videoRef.current;
+    if (!video) return;
+    
+    const watchedPercent = video.currentTime / video.duration;
+    const watchedSeconds = video.currentTime;
+    
+    // Mark as watched if >= 80% or >= 30 seconds (whichever is smaller threshold)
+    if (watchedPercent >= 0.8 || watchedSeconds >= 30) {
+      setHasWatched(true);
+    }
+  }, [hasWatched]);
 
   const handleClassicParamChange = useCallback((key: keyof SimpleSimulationParams, value: number) => {
     setClassicParams(prev => ({ ...prev, [key]: value }));
@@ -156,12 +183,15 @@ export function SimpleMonteCarloSimulator() {
         {/* Mode Selector */}
         <div className="flex justify-center mb-6">
           <Tabs value={mode} onValueChange={handleModeChange} className="w-auto">
-            <TabsList className="grid w-full grid-cols-2 min-w-[300px]">
+            <TabsList className="grid w-full grid-cols-3 min-w-[400px]">
               <TabsTrigger value="classic" className="text-sm">
                 Classic
               </TabsTrigger>
               <TabsTrigger value="advanced" className="text-sm">
                 Advanced
+              </TabsTrigger>
+              <TabsTrigger value="study" className="text-sm">
+                Study
               </TabsTrigger>
             </TabsList>
           </Tabs>
@@ -175,7 +205,35 @@ export function SimpleMonteCarloSimulator() {
           </AlertDescription>
         </Alert>
 
-        {mode === 'classic' ? (
+        {mode === 'study' ? (
+          // Study Tab Layout
+          <div className="max-w-3xl mx-auto space-y-6">
+            <div className="text-center space-y-2">
+              <h2 className="text-2xl font-bold text-foreground">Study This</h2>
+              <p className="text-muted-foreground">Watch before running advanced simulations.</p>
+            </div>
+            
+            <div className="rounded-lg border bg-card shadow-sm overflow-hidden">
+              <video
+                ref={videoRef}
+                controls
+                preload="metadata"
+                className="w-full"
+                onTimeUpdate={handleVideoTimeUpdate}
+              >
+                <source src="/study.mp4" type="video/mp4" />
+                Your browser does not support the video tag.
+              </video>
+            </div>
+            
+            {hasWatched && (
+              <div className="flex items-center justify-center gap-2 text-sm text-green-600 dark:text-green-400">
+                <CheckCircle2 className="h-4 w-4" />
+                <span>Watched</span>
+              </div>
+            )}
+          </div>
+        ) : mode === 'classic' ? (
           // Classic Mode Layout
           <div className="grid lg:grid-cols-12 gap-6">
             {/* Left Panel - Inputs */}
