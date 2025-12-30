@@ -11,6 +11,8 @@ export interface CustomRange {
   // For prediction-centric (bell curve)
   expectedMin?: number;
   expectedMax?: number;
+  // User-defined weight (percentage, e.g., 30 = 30%)
+  weight: number;
 }
 
 export interface AdvancedSimulationParams {
@@ -61,10 +63,14 @@ export function validateAdvancedParams(params: AdvancedSimulationParams): Advanc
 
   if (params.fdvRanges.length === 0) {
     errors.push({ field: 'fdvRanges', message: 'At least one FDV range is required' });
+  } else if (!params.fdvRanges.some(r => r.weight > 0)) {
+    errors.push({ field: 'fdvRanges', message: 'At least one FDV range must have a non-zero weight' });
   }
 
   if (params.dropRanges.length === 0) {
     errors.push({ field: 'dropRanges', message: 'At least one Airdrop % range is required' });
+  } else if (!params.dropRanges.some(r => r.weight > 0)) {
+    errors.push({ field: 'dropRanges', message: 'At least one Airdrop % range must have a non-zero weight' });
   }
 
   // Validate FDV ranges
@@ -204,12 +210,12 @@ function sampleFromRange(range: CustomRange, rng: SeededRandom, scale: number = 
   }
 }
 
-// Calculate range weights proportional to width
+// Calculate normalized weights from user-defined weights
 function calculateRangeWeights(ranges: CustomRange[]): number[] {
-  const widths = ranges.map(r => r.max - r.min);
-  const totalWidth = widths.reduce((a, b) => a + b, 0);
-  if (totalWidth === 0) return ranges.map(() => 1 / ranges.length);
-  return widths.map(w => w / totalWidth);
+  const weights = ranges.map(r => Math.max(0, r.weight));
+  const totalWeight = weights.reduce((a, b) => a + b, 0);
+  if (totalWeight === 0) return ranges.map(() => 1 / ranges.length);
+  return weights.map(w => w / totalWeight);
 }
 
 // Pre-compute cumulative weights
@@ -409,7 +415,8 @@ export const DEFAULT_ADVANCED_PARAMS: AdvancedSimulationParams = {
       id: generateRangeId(),
       min: 20,
       max: 100,
-      distributionType: 'uniform'
+      distributionType: 'uniform',
+      weight: 100
     }
   ],
   dropRanges: [
@@ -417,8 +424,19 @@ export const DEFAULT_ADVANCED_PARAMS: AdvancedSimulationParams = {
       id: generateRangeId(),
       min: 5,
       max: 25,
-      distributionType: 'linearDecreasing'
+      distributionType: 'linearDecreasing',
+      weight: 100
     }
   ],
   numSimulations: 200000
 };
+
+// Compute total weight for a set of ranges
+export function computeTotalWeight(ranges: CustomRange[]): number {
+  return ranges.reduce((sum, r) => sum + Math.max(0, r.weight), 0);
+}
+
+// Check if weights are valid (at least one non-zero)
+export function hasValidWeights(ranges: CustomRange[]): boolean {
+  return ranges.some(r => r.weight > 0);
+}
