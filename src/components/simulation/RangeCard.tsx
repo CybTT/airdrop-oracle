@@ -74,6 +74,10 @@ export function RangeCard({ range, index, type, onUpdate, onRemove, canRemove, e
     onUpdate({ ...range, expectedMax: parseFloat(value) || 0 });
   };
 
+  const handleWeightChange = (value: string) => {
+    onUpdate({ ...range, weight: Math.max(0, parseFloat(value) || 0) });
+  };
+
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
       <Card className={error ? "border-destructive" : ""}>
@@ -110,7 +114,7 @@ export function RangeCard({ range, index, type, onUpdate, onRemove, canRemove, e
         <CollapsibleContent>
           <CardContent className="pt-0 pb-4 space-y-4">
             {/* Range Inputs */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <div className="space-y-1.5">
                 <Label className="text-xs">Min</Label>
                 <div className="relative">
@@ -144,6 +148,22 @@ export function RangeCard({ range, index, type, onUpdate, onRemove, canRemove, e
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">
                     {unitLabel}
+                  </span>
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Weight (%)</Label>
+                <div className="relative">
+                  <Input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    value={range.weight}
+                    onChange={(e) => handleWeightChange(e.target.value)}
+                    className="font-mono pr-8"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">
+                    %
                   </span>
                 </div>
               </div>

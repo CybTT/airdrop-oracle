@@ -77,12 +77,12 @@ function computeDensity(
   }
 }
 
-// Compute range weight (width-based)
+// Compute normalized weights from user-defined weights
 function computeWeights(ranges: CustomRange[]): number[] {
-  const widths = ranges.map((r) => Math.max(0, r.max - r.min));
-  const total = widths.reduce((a, b) => a + b, 0);
+  const weights = ranges.map((r) => Math.max(0, r.weight));
+  const total = weights.reduce((a, b) => a + b, 0);
   if (total === 0) return ranges.map(() => 1 / ranges.length);
-  return widths.map((w) => w / total);
+  return weights.map((w) => w / total);
 }
 
 export function DistributionPreviewChart({
@@ -111,26 +111,27 @@ export function DistributionPreviewChart({
       const point: Record<string, number> = { x };
 
       // Compute each range's weighted density
-      let combined = 0;
       for (let j = 0; j < ranges.length; j++) {
         const density = computeDensity(x, ranges[j]) * weights[j];
         point[`range${j}`] = density;
-        combined += density;
       }
-      point.combined = combined;
 
       data.push(point);
     }
 
-    // Find max combined for normalization
-    const maxCombined = Math.max(...data.map((d) => d.combined), 0.001);
-
-    // Normalize all values so max combined = 1
+    // Find max value for normalization (across all ranges)
+    let maxValue = 0.001;
     for (const point of data) {
       for (let j = 0; j < ranges.length; j++) {
-        point[`range${j}`] = point[`range${j}`] / maxCombined;
+        maxValue = Math.max(maxValue, point[`range${j}`]);
       }
-      point.combined = point.combined / maxCombined;
+    }
+
+    // Normalize all values so max = 1
+    for (const point of data) {
+      for (let j = 0; j < ranges.length; j++) {
+        point[`range${j}`] = point[`range${j}`] / maxValue;
+      }
     }
 
     return data;
@@ -178,7 +179,6 @@ export function DistributionPreviewChart({
             }}
             labelStyle={{ color: "hsl(var(--popover-foreground))" }}
             formatter={(value: number, name: string) => {
-              if (name === "combined") return [(value * 100).toFixed(1) + "%", "Combined"];
               const idx = parseInt(name.replace("range", ""));
               return [(value * 100).toFixed(1) + "%", `Range ${idx + 1}`];
             }}
@@ -192,7 +192,6 @@ export function DistributionPreviewChart({
             iconSize={8}
             wrapperStyle={{ fontSize: "10px" }}
             formatter={(value: string) => {
-              if (value === "combined") return "Combined";
               const idx = parseInt(value.replace("range", ""));
               const range = ranges[idx];
               if (!range) return value;
@@ -223,19 +222,6 @@ export function DistributionPreviewChart({
               isAnimationActive={false}
             />
           ))}
-
-          {/* Combined line */}
-          {ranges.length > 1 && (
-            <Line
-              type="monotone"
-              dataKey="combined"
-              stroke="hsl(var(--foreground))"
-              strokeWidth={2}
-              strokeDasharray="4 2"
-              dot={false}
-              isAnimationActive={false}
-            />
-          )}
         </LineChart>
       </ResponsiveContainer>
     </div>

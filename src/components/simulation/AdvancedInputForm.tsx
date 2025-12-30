@@ -1,4 +1,4 @@
-import { AdvancedSimulationParams, AdvancedValidationError, CustomRange, generateRangeId } from "@/lib/advanced-monte-carlo";
+import { AdvancedSimulationParams, AdvancedValidationError, CustomRange, generateRangeId, computeTotalWeight, hasValidWeights } from "@/lib/advanced-monte-carlo";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,7 +29,8 @@ export function AdvancedInputForm({ params, errors, onParamsChange }: AdvancedIn
       id: generateRangeId(),
       min: 50,
       max: 150,
-      distributionType: 'uniform'
+      distributionType: 'uniform',
+      weight: 20
     };
     onParamsChange({ ...params, fdvRanges: [...params.fdvRanges, newRange] });
   };
@@ -51,7 +52,8 @@ export function AdvancedInputForm({ params, errors, onParamsChange }: AdvancedIn
       id: generateRangeId(),
       min: 10,
       max: 30,
-      distributionType: 'uniform'
+      distributionType: 'uniform',
+      weight: 20
     };
     onParamsChange({ ...params, dropRanges: [...params.dropRanges, newRange] });
   };
@@ -69,6 +71,12 @@ export function AdvancedInputForm({ params, errors, onParamsChange }: AdvancedIn
   
   const getFieldError = (field: string) => errors.find(e => e.field === field && !e.rangeId)?.message;
   const getRangeError = (field: string, rangeId: string) => errors.find(e => e.field === field && e.rangeId === rangeId)?.message;
+  
+  // Compute total weights for display
+  const fdvTotalWeight = computeTotalWeight(params.fdvRanges);
+  const dropTotalWeight = computeTotalWeight(params.dropRanges);
+  const fdvWeightsValid = hasValidWeights(params.fdvRanges);
+  const dropWeightsValid = hasValidWeights(params.dropRanges);
 
   return (
     <div className="space-y-6">
@@ -174,8 +182,14 @@ export function AdvancedInputForm({ params, errors, onParamsChange }: AdvancedIn
                 <span>{getFieldError('fdvRanges')}</span>
               </div>
             )}
+            {!fdvWeightsValid && params.fdvRanges.length > 0 && (
+              <div className="flex items-center gap-1 text-destructive text-xs">
+                <AlertCircle className="h-3 w-3" />
+                <span>At least one range must have a non-zero weight</span>
+              </div>
+            )}
             <p className="text-xs text-muted-foreground pt-2">
-              {params.fdvRanges.length}/{MAX_RANGES} ranges • Weights proportional to range width
+              {params.fdvRanges.length}/{MAX_RANGES} ranges • Total Weight: {fdvTotalWeight.toFixed(1)}% (auto-normalized)
             </p>
           </CardContent>
         </Card>
@@ -234,8 +248,14 @@ export function AdvancedInputForm({ params, errors, onParamsChange }: AdvancedIn
                 <span>{getFieldError('dropRanges')}</span>
               </div>
             )}
+            {!dropWeightsValid && params.dropRanges.length > 0 && (
+              <div className="flex items-center gap-1 text-destructive text-xs">
+                <AlertCircle className="h-3 w-3" />
+                <span>At least one range must have a non-zero weight</span>
+              </div>
+            )}
             <p className="text-xs text-muted-foreground pt-2">
-              {params.dropRanges.length}/{MAX_RANGES} ranges • Weights proportional to range width
+              {params.dropRanges.length}/{MAX_RANGES} ranges • Total Weight: {dropTotalWeight.toFixed(1)}% (auto-normalized)
             </p>
           </CardContent>
         </Card>
