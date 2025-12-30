@@ -5,13 +5,37 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Play, AlertTriangle, Loader2 } from "lucide-react";
 import { SimpleSimulationParams, SimpleSimulationResults, ValidationError, DEFAULT_PARAMS, validateParams, runSimpleSimulation } from "@/lib/simple-monte-carlo";
-import { AdvancedSimulationParams, AdvancedValidationError, DEFAULT_ADVANCED_PARAMS, validateAdvancedParams, runAdvancedSimulation } from "@/lib/advanced-monte-carlo";
+import { AdvancedSimulationParams, AdvancedValidationError, CustomRange, DEFAULT_ADVANCED_PARAMS, validateAdvancedParams, runAdvancedSimulation } from "@/lib/advanced-monte-carlo";
 import { SimpleInputForm } from "./SimpleInputForm";
 import { AdvancedInputForm } from "./AdvancedInputForm";
 import { SimpleResults } from "./SimpleResults";
 import { SimpleThresholds } from "./SimpleThresholds";
 import { SimpleHistogram } from "./SimpleHistogram";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
+// Check if any two ranges overlap
+function hasOverlap(ranges: CustomRange[]): boolean {
+  for (let i = 0; i < ranges.length; i++) {
+    for (let j = i + 1; j < ranges.length; j++) {
+      const a = ranges[i];
+      const b = ranges[j];
+      // Ranges overlap if one starts before the other ends
+      if (a.min < b.max && b.min < a.max) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
 
 type SimulationMode = 'classic' | 'advanced';
 
@@ -33,6 +57,9 @@ export function SimpleMonteCarloSimulator() {
   const [results, setResults] = useState<SimpleSimulationResults | null>(null);
   const [isRunning, setIsRunning] = useState(false);
 
+  // Overlap warning state (Advanced mode only)
+  const [showOverlapWarning, setShowOverlapWarning] = useState(false);
+
   const handleClassicParamChange = useCallback((key: keyof SimpleSimulationParams, value: number) => {
     setClassicParams(prev => ({ ...prev, [key]: value }));
     setClassicErrors(prev => prev.filter(e => e.field !== key));
@@ -43,6 +70,16 @@ export function SimpleMonteCarloSimulator() {
     // Clear errors for updated fields
     setAdvancedErrors([]);
   }, []);
+
+  // Actually run the advanced simulation (after overlap check)
+  const executeAdvancedSimulation = useCallback(() => {
+    setIsRunning(true);
+    setTimeout(() => {
+      const newResults = runAdvancedSimulation(advancedParams, thresholds);
+      setResults(newResults);
+      setIsRunning(false);
+    }, 10);
+  }, [advancedParams, thresholds]);
 
   const handleRunSimulation = useCallback(() => {
     if (mode === 'classic') {
@@ -65,14 +102,24 @@ export function SimpleMonteCarloSimulator() {
         return;
       }
       setAdvancedErrors([]);
-      setIsRunning(true);
-      setTimeout(() => {
-        const newResults = runAdvancedSimulation(advancedParams, thresholds);
-        setResults(newResults);
-        setIsRunning(false);
-      }, 10);
+      
+      // Check for overlaps in Advanced mode
+      const fdvOverlap = hasOverlap(advancedParams.fdvRanges);
+      const dropOverlap = hasOverlap(advancedParams.dropRanges);
+      
+      if (fdvOverlap || dropOverlap) {
+        setShowOverlapWarning(true);
+        return;
+      }
+      
+      executeAdvancedSimulation();
     }
-  }, [mode, classicParams, advancedParams, thresholds]);
+  }, [mode, classicParams, advancedParams, thresholds, executeAdvancedSimulation]);
+
+  const handleOverlapConfirm = useCallback(() => {
+    setShowOverlapWarning(false);
+    executeAdvancedSimulation();
+  }, [executeAdvancedSimulation]);
 
   const handleModeChange = (newMode: string) => {
     setMode(newMode as SimulationMode);
@@ -317,6 +364,30 @@ export function SimpleMonteCarloSimulator() {
           </div>
         )}
       </main>
+
+      {/* Overlap Warning Modal (Advanced mode only) */}
+      <AlertDialog open={showOverlapWarning} onOpenChange={setShowOverlapWarning}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Overlapping ranges detected.</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-4">
+                <p className="font-medium">What this implies:</p>
+                <ul className="list-disc list-inside space-y-1 text-sm">
+                  <li>Overlapping values accumulate probability from more than one range</li>
+                  <li>This increases the likelihood of outcomes inside the overlap</li>
+                </ul>
+                <p className="text-sm">
+                  If this is not intentional, adjust your ranges so they do not intersect.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={handleOverlapConfirm}>OK</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
