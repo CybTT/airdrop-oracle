@@ -187,11 +187,11 @@ export function SimpleMonteCarloSimulator() {
               <TabsTrigger value="classic" className="text-sm">
                 Classic
               </TabsTrigger>
-              <TabsTrigger value="advanced" className="text-sm">
-                Advanced
-              </TabsTrigger>
               <TabsTrigger value="study" className="text-sm">
                 Study
+              </TabsTrigger>
+              <TabsTrigger value="advanced" className="text-sm">
+                Advanced
               </TabsTrigger>
             </TabsList>
           </Tabs>
