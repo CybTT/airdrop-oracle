@@ -14,25 +14,40 @@ function isClassicParams(params: SimpleSimulationParams | AdvancedSimulationPara
   return 'fdvMinM' in params && 'dropMinPct' in params;
 }
 
-// Mini histogram component for the share card
+// Mini histogram component for the share card - uses inline styles for consistent export
 function ShareHistogram({ histogram, median }: { histogram: HistogramBin[]; median: number }) {
   const maxCount = Math.max(...histogram.map(bin => bin.count));
   
   return (
-    <div className="w-full h-48 flex items-end gap-[2px] relative">
+    <div style={{
+      width: '100%',
+      height: '192px',
+      display: 'flex',
+      alignItems: 'flex-end',
+      gap: '2px',
+      position: 'relative'
+    }}>
       {histogram.map((bin, index) => {
         const height = maxCount > 0 ? (bin.count / maxCount) * 100 : 0;
         const binMid = (bin.binStart + bin.binEnd) / 2;
         const isMedianBin = binMid >= median * 0.9 && binMid <= median * 1.1;
         
+        // Vibrant gold with glow effect for bars
+        const goldColor = '#e6b54a'; // Brighter, more saturated gold
+        const redColor = '#f43f5e'; // Vibrant red for median
+        
         return (
           <div
             key={index}
-            className="flex-1 rounded-t-sm transition-all"
             style={{
+              flex: 1,
               height: `${height}%`,
-              backgroundColor: isMedianBin ? '#ef4444' : '#d4a84b',
-              minHeight: bin.count > 0 ? '2px' : '0'
+              backgroundColor: isMedianBin ? redColor : goldColor,
+              minHeight: bin.count > 0 ? '2px' : '0',
+              borderRadius: '2px 2px 0 0',
+              boxShadow: isMedianBin 
+                ? '0 0 8px rgba(244, 63, 94, 0.6)' 
+                : '0 0 4px rgba(230, 181, 74, 0.3)'
             }}
           />
         );
@@ -76,16 +91,33 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
     // Get histogram X-axis labels
     const xLabels = histogram.filter((_, i) => i % 8 === 0).map(bin => formatCurrency(bin.binStart, 0));
 
+    // Vibrant, saturated colors that match the live UI
+    const colors = {
+      background: '#0a0a0b',
+      cardBg: '#111113',
+      cardBgDark: '#0d0d0f',
+      gold: '#e6b54a', // Brighter, more saturated gold
+      goldGlow: 'rgba(230, 181, 74, 0.4)',
+      white: '#ffffff',
+      textMuted: '#a1a1aa', // Brighter muted text
+      textDim: '#71717a',
+      border: '#27272a',
+      borderLight: '#3f3f46',
+      red: '#f43f5e'
+    };
+
     return (
       <div
         ref={ref}
         style={{
           width: '1200px',
-          backgroundColor: '#0a0a0b',
-          color: '#ffffff',
+          backgroundColor: colors.background,
+          color: colors.white,
           padding: '32px',
           fontFamily: 'system-ui, -apple-system, sans-serif',
-          borderRadius: '16px'
+          borderRadius: '16px',
+          // Subtle outer glow for depth
+          boxShadow: `0 0 60px rgba(0, 0, 0, 0.8), 0 0 30px ${colors.goldGlow}`
         }}
       >
         {/* Top Header */}
@@ -93,9 +125,10 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
           <h1 style={{ 
             fontSize: '28px', 
             fontWeight: 'bold', 
-            color: '#d4a84b',
+            color: colors.gold,
             margin: 0,
-            letterSpacing: '-0.02em'
+            letterSpacing: '-0.02em',
+            textShadow: `0 0 20px ${colors.goldGlow}`
           }}>
             Sorry for your loss. The answer is 0.
           </h1>
@@ -107,26 +140,28 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
           {/* Left Column - Stats */}
           <div style={{ 
             flex: '0 0 380px', 
-            backgroundColor: '#111113', 
+            backgroundColor: colors.cardBg, 
             borderRadius: '12px', 
             padding: '24px',
-            border: '1px solid #222'
+            border: `1px solid ${colors.border}`,
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)'
           }}>
             {/* Main Value */}
-            <div style={{ textAlign: 'center', paddingBottom: '20px', borderBottom: '1px solid #333' }}>
-              <p style={{ fontSize: '14px', color: '#888', marginBottom: '8px' }}>
+            <div style={{ textAlign: 'center', paddingBottom: '20px', borderBottom: `1px solid ${colors.border}` }}>
+              <p style={{ fontSize: '14px', color: colors.textMuted, marginBottom: '8px' }}>
                 Estimated Airdrop Value per NFT
               </p>
               <div style={{ 
                 fontSize: '56px', 
                 fontWeight: 'bold', 
-                color: '#d4a84b',
+                color: colors.gold,
                 fontVariantNumeric: 'tabular-nums',
-                lineHeight: 1.1
+                lineHeight: 1.1,
+                textShadow: `0 0 30px ${colors.goldGlow}`
               }}>
                 {formatCurrency(stats.median, 0)}
               </div>
-              <p style={{ fontSize: '14px', color: '#888', marginTop: '4px' }}>Median (P50)</p>
+              <p style={{ fontSize: '14px', color: colors.textMuted, marginTop: '4px' }}>Median (P50)</p>
             </div>
 
             {/* P10 / P90 */}
@@ -135,17 +170,17 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
               gridTemplateColumns: '1fr 1fr', 
               gap: '16px', 
               padding: '20px 0', 
-              borderBottom: '1px solid #333' 
+              borderBottom: `1px solid ${colors.border}` 
             }}>
               <div style={{ textAlign: 'center' }}>
-                <p style={{ fontSize: '12px', color: '#888', marginBottom: '4px' }}>P10 (Low End)</p>
-                <div style={{ fontSize: '24px', fontWeight: '600', fontVariantNumeric: 'tabular-nums' }}>
+                <p style={{ fontSize: '12px', color: colors.textMuted, marginBottom: '4px' }}>P10 (Low End)</p>
+                <div style={{ fontSize: '24px', fontWeight: '600', fontVariantNumeric: 'tabular-nums', color: colors.white }}>
                   {formatCurrency(stats.p10, 0)}
                 </div>
               </div>
               <div style={{ textAlign: 'center' }}>
-                <p style={{ fontSize: '12px', color: '#888', marginBottom: '4px' }}>P90 (High End)</p>
-                <div style={{ fontSize: '24px', fontWeight: '600', fontVariantNumeric: 'tabular-nums' }}>
+                <p style={{ fontSize: '12px', color: colors.textMuted, marginBottom: '4px' }}>P90 (High End)</p>
+                <div style={{ fontSize: '24px', fontWeight: '600', fontVariantNumeric: 'tabular-nums', color: colors.white }}>
                   {formatCurrency(stats.p90, 0)}
                 </div>
               </div>
@@ -157,17 +192,17 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
               gridTemplateColumns: '1fr 1fr', 
               gap: '16px', 
               padding: '20px 0', 
-              borderBottom: '1px solid #333' 
+              borderBottom: `1px solid ${colors.border}` 
             }}>
               <div style={{ textAlign: 'center' }}>
-                <p style={{ fontSize: '12px', color: '#888', marginBottom: '4px' }}>P5 (Rare Downside)</p>
-                <div style={{ fontSize: '18px', fontWeight: '500', color: '#aaa', fontVariantNumeric: 'tabular-nums' }}>
+                <p style={{ fontSize: '12px', color: colors.textMuted, marginBottom: '4px' }}>P5 (Rare Downside)</p>
+                <div style={{ fontSize: '18px', fontWeight: '500', color: colors.textMuted, fontVariantNumeric: 'tabular-nums' }}>
                   {formatCurrency(stats.p5, 0)}
                 </div>
               </div>
               <div style={{ textAlign: 'center' }}>
-                <p style={{ fontSize: '12px', color: '#888', marginBottom: '4px' }}>P95 (Rare Upside)</p>
-                <div style={{ fontSize: '18px', fontWeight: '500', color: '#aaa', fontVariantNumeric: 'tabular-nums' }}>
+                <p style={{ fontSize: '12px', color: colors.textMuted, marginBottom: '4px' }}>P95 (Rare Upside)</p>
+                <div style={{ fontSize: '18px', fontWeight: '500', color: colors.textMuted, fontVariantNumeric: 'tabular-nums' }}>
                   {formatCurrency(stats.p95, 0)}
                 </div>
               </div>
@@ -179,25 +214,25 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
               gridTemplateColumns: '1fr 1fr', 
               gap: '16px', 
               padding: '20px 0', 
-              borderBottom: '1px solid #333',
-              backgroundColor: '#0d0d0f',
+              borderBottom: `1px solid ${colors.border}`,
+              backgroundColor: colors.cardBgDark,
               margin: '0 -24px',
               paddingLeft: '24px',
               paddingRight: '24px'
             }}>
               <div style={{ textAlign: 'center' }}>
-                <p style={{ fontSize: '12px', color: '#888', marginBottom: '4px' }}>Worst-Case Anchor</p>
-                <div style={{ fontSize: '18px', fontWeight: '500', fontVariantNumeric: 'tabular-nums' }}>
+                <p style={{ fontSize: '12px', color: colors.textMuted, marginBottom: '4px' }}>Worst-Case Anchor</p>
+                <div style={{ fontSize: '18px', fontWeight: '500', fontVariantNumeric: 'tabular-nums', color: colors.white }}>
                   {formatCurrency(worstCase, 2)}
                 </div>
-                <p style={{ fontSize: '11px', color: '#666', marginTop: '2px' }}>FDV Min × Drop Min</p>
+                <p style={{ fontSize: '11px', color: colors.textDim, marginTop: '2px' }}>FDV Min × Drop Min</p>
               </div>
               <div style={{ textAlign: 'center' }}>
-                <p style={{ fontSize: '12px', color: '#888', marginBottom: '4px' }}>Best-Case Anchor</p>
-                <div style={{ fontSize: '18px', fontWeight: '500', fontVariantNumeric: 'tabular-nums' }}>
+                <p style={{ fontSize: '12px', color: colors.textMuted, marginBottom: '4px' }}>Best-Case Anchor</p>
+                <div style={{ fontSize: '18px', fontWeight: '500', fontVariantNumeric: 'tabular-nums', color: colors.white }}>
                   {formatCurrency(bestCase, 2)}
                 </div>
-                <p style={{ fontSize: '11px', color: '#666', marginTop: '2px' }}>FDV Max × Drop Max</p>
+                <p style={{ fontSize: '11px', color: colors.textDim, marginTop: '2px' }}>FDV Max × Drop Max</p>
               </div>
             </div>
 
@@ -210,10 +245,10 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
               fontSize: '13px'
             }}>
               <div>
-                <span style={{ color: '#888' }}>Mean: </span>
-                <span style={{ fontFamily: 'monospace', fontWeight: '500' }}>{formatCurrency(stats.mean, 2)}</span>
+                <span style={{ color: colors.textMuted }}>Mean: </span>
+                <span style={{ fontFamily: 'monospace', fontWeight: '500', color: colors.white }}>{formatCurrency(stats.mean, 2)}</span>
               </div>
-              <div style={{ color: '#666', fontSize: '12px' }}>
+              <div style={{ color: colors.textDim, fontSize: '12px' }}>
                 Computed in {formatDuration(executionTimeMs)}
               </div>
             </div>
@@ -224,11 +259,12 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
             
             {/* Distribution Chart */}
             <div style={{ 
-              backgroundColor: '#111113', 
+              backgroundColor: colors.cardBg, 
               borderRadius: '12px', 
               padding: '20px',
-              border: '1px solid #222',
-              flex: 1
+              border: `1px solid ${colors.border}`,
+              flex: 1,
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)'
             }}>
               <div style={{ 
                 display: 'flex', 
@@ -236,14 +272,14 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
                 alignItems: 'center', 
                 marginBottom: '16px' 
               }}>
-                <h3 style={{ fontSize: '16px', fontWeight: '600', margin: 0 }}>Value Distribution</h3>
+                <h3 style={{ fontSize: '16px', fontWeight: '600', margin: 0, color: colors.white }}>Value Distribution</h3>
                 <span style={{ 
                   fontSize: '12px', 
-                  color: '#888', 
+                  color: colors.textMuted, 
                   padding: '4px 8px', 
-                  backgroundColor: '#1a1a1c', 
+                  backgroundColor: colors.cardBgDark, 
                   borderRadius: '4px',
-                  border: '1px solid #333'
+                  border: `1px solid ${colors.border}`
                 }}>
                   Linear X
                 </span>
@@ -256,7 +292,7 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
                   flexDirection: 'column', 
                   justifyContent: 'space-between', 
                   fontSize: '10px', 
-                  color: '#666',
+                  color: colors.textDim,
                   paddingBottom: '20px',
                   width: '32px',
                   textAlign: 'right'
@@ -277,7 +313,7 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
                     justifyContent: 'space-between', 
                     marginTop: '8px', 
                     fontSize: '10px', 
-                    color: '#666' 
+                    color: colors.textDim 
                   }}>
                     {xLabels.slice(0, 5).map((label, i) => (
                       <span key={i}>{label}</span>
@@ -293,14 +329,20 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
                 gap: '24px', 
                 marginTop: '12px', 
                 fontSize: '12px', 
-                color: '#888' 
+                color: colors.textMuted 
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <div style={{ width: '12px', height: '12px', backgroundColor: '#d4a84b', borderRadius: '50%' }} />
+                  <div style={{ 
+                    width: '12px', 
+                    height: '12px', 
+                    backgroundColor: colors.gold, 
+                    borderRadius: '50%',
+                    boxShadow: `0 0 6px ${colors.goldGlow}`
+                  }} />
                   <span>Distribution</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <div style={{ width: '16px', height: '2px', borderTop: '2px dashed #ef4444' }} />
+                  <div style={{ width: '16px', height: '2px', borderTop: `2px dashed ${colors.red}` }} />
                   <span>Median</span>
                 </div>
               </div>
@@ -309,10 +351,11 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
             {/* Probability Thresholds */}
             {thresholds.length > 0 && (
               <div style={{ 
-                backgroundColor: '#111113', 
+                backgroundColor: colors.cardBg, 
                 borderRadius: '12px', 
                 padding: '20px',
-                border: '1px solid #222'
+                border: `1px solid ${colors.border}`,
+                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)'
               }}>
                 <div style={{ 
                   display: 'flex', 
@@ -320,9 +363,9 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
                   alignItems: 'center', 
                   marginBottom: '12px' 
                 }}>
-                  <h3 style={{ fontSize: '16px', fontWeight: '600', margin: 0 }}>Probability Thresholds</h3>
+                  <h3 style={{ fontSize: '16px', fontWeight: '600', margin: 0, color: colors.white }}>Probability Thresholds</h3>
                 </div>
-                <p style={{ fontSize: '12px', color: '#888', marginBottom: '16px' }}>
+                <p style={{ fontSize: '12px', color: colors.textMuted, marginBottom: '16px' }}>
                   Chance that your airdrop is worth at least...
                 </p>
                 
@@ -340,14 +383,15 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
                           marginBottom: '6px'
                         }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <span style={{ color: '#888', fontSize: '14px' }}>≥ $</span>
+                            <span style={{ color: colors.textMuted, fontSize: '14px' }}>≥ $</span>
                             <span style={{ 
-                              backgroundColor: '#1a1a1c', 
+                              backgroundColor: colors.cardBgDark, 
                               padding: '4px 12px', 
                               borderRadius: '4px',
                               fontSize: '14px',
                               fontVariantNumeric: 'tabular-nums',
-                              border: '1px solid #333'
+                              border: `1px solid ${colors.border}`,
+                              color: colors.white
                             }}>
                               {threshold}
                             </span>
@@ -355,7 +399,8 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
                           <span style={{ 
                             fontWeight: '600', 
                             fontVariantNumeric: 'tabular-nums',
-                            fontSize: '14px'
+                            fontSize: '14px',
+                            color: colors.white
                           }}>
                             {formatProbability(prob)}
                           </span>
@@ -363,15 +408,16 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
                         {/* Progress bar */}
                         <div style={{ 
                           height: '4px', 
-                          backgroundColor: '#222', 
+                          backgroundColor: colors.border, 
                           borderRadius: '2px',
                           overflow: 'hidden'
                         }}>
                           <div style={{ 
                             height: '100%', 
                             width: `${percentage}%`,
-                            backgroundColor: '#d4a84b',
-                            borderRadius: '2px'
+                            backgroundColor: colors.gold,
+                            borderRadius: '2px',
+                            boxShadow: `0 0 8px ${colors.goldGlow}`
                           }} />
                         </div>
                       </div>
@@ -387,12 +433,12 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
         <div style={{ 
           marginTop: '20px', 
           paddingTop: '16px', 
-          borderTop: '1px solid #222',
+          borderTop: `1px solid ${colors.border}`,
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           fontSize: '12px',
-          color: '#666'
+          color: colors.textDim
         }}>
           <div style={{ display: 'flex', gap: '16px' }}>
             <span>Supply: {inputs.supply}</span>
@@ -400,7 +446,7 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
             <span>Drop%: {inputs.dropRange}</span>
             <span>{inputs.simulations} simulations</span>
           </div>
-          <span style={{ color: '#555' }}>airdrop-oracle</span>
+          <span style={{ color: colors.gold, fontWeight: '500' }}>airdrop-oracle</span>
         </div>
       </div>
     );

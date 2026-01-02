@@ -29,10 +29,18 @@ export function ShareButtons({ results, params, thresholds }: ShareButtonsProps)
     try {
       const dataUrl = await toPng(cardRef.current, {
         quality: 1,
-        pixelRatio: 2,
-        backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--background').trim() 
-          ? `hsl(${getComputedStyle(document.documentElement).getPropertyValue('--background').trim()})`
-          : '#0a0a0b'
+        pixelRatio: 3, // Higher DPI for crisp colors and details
+        cacheBust: true, // Prevent stale cache
+        skipAutoScale: false,
+        backgroundColor: '#0a0a0b', // Explicit solid dark background - no transparency
+        style: {
+          // Ensure no color shifts from browser defaults
+          colorScheme: 'dark',
+        },
+        filter: (node) => {
+          // Exclude any nodes that might cause issues
+          return true;
+        }
       });
 
       // Convert data URL to blob
