@@ -106,6 +106,10 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
       red: 'hsl(var(--destructive))',
     };
 
+    // Use the same radius as the design system (--radius is 1.875rem = 30px)
+    const cardRadius = '1.875rem';
+    const innerCardRadius = '0.75rem'; // 12px for inner cards, matching rounded-lg
+
     return (
       <div
         ref={ref}
@@ -115,7 +119,8 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
           color: colors.white,
           padding: '32px',
           fontFamily: 'var(--font-sans)',
-          borderRadius: '16px',
+          borderRadius: cardRadius,
+          border: `1px solid ${colors.border}`,
           // Subtle outer glow for depth
           boxShadow: `0 0 60px hsl(0 0% 0% / 0.8), 0 0 30px ${colors.goldGlow}`
         }}
@@ -124,10 +129,11 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
           <h1 style={{ 
             fontSize: '28px', 
-            fontWeight: 'bold', 
+            fontWeight: 700, 
             color: colors.gold,
             margin: 0,
             letterSpacing: '-0.02em',
+            fontFamily: 'var(--font-sans)',
             textShadow: `0 0 20px ${colors.goldGlow}`
           }}>
             Sorry for your loss. The answer is 0.
@@ -141,7 +147,7 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
           <div style={{ 
             flex: '0 0 380px', 
             backgroundColor: colors.cardBg, 
-            borderRadius: '12px', 
+            borderRadius: innerCardRadius, 
             padding: '24px',
             border: `1px solid ${colors.border}`,
             boxShadow: '0 4px 20px hsl(0 0% 0% / 0.35)'
@@ -260,7 +266,7 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
             {/* Distribution Chart */}
             <div style={{ 
               backgroundColor: colors.cardBg, 
-              borderRadius: '12px', 
+              borderRadius: innerCardRadius, 
               padding: '20px',
               border: `1px solid ${colors.border}`,
               flex: 1,
@@ -352,7 +358,7 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
             {thresholds.length > 0 && (
               <div style={{ 
                 backgroundColor: colors.cardBg, 
-                borderRadius: '12px', 
+                borderRadius: innerCardRadius, 
                 padding: '20px',
                 border: `1px solid ${colors.border}`,
                 boxShadow: '0 4px 20px hsl(0 0% 0% / 0.35)'
@@ -429,24 +435,22 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
           </div>
         </div>
 
-        {/* Footer */}
+        {/* Footer - Input summary only, no watermark */}
         <div style={{ 
           marginTop: '20px', 
           paddingTop: '16px', 
           borderTop: `1px solid ${colors.border}`,
           display: 'flex',
-          justifyContent: 'space-between',
+          justifyContent: 'center',
           alignItems: 'center',
           fontSize: '12px',
-          color: colors.textDim
+          color: colors.textDim,
+          gap: '24px'
         }}>
-          <div style={{ display: 'flex', gap: '16px' }}>
-            <span>Supply: {inputs.supply}</span>
-            <span>FDV: {inputs.fdvRange}</span>
-            <span>Drop%: {inputs.dropRange}</span>
-            <span>{inputs.simulations} simulations</span>
-          </div>
-          <span style={{ color: colors.gold, fontWeight: '500' }}>airdrop-oracle</span>
+          <span>Supply: {inputs.supply}</span>
+          <span>FDV: {inputs.fdvRange}</span>
+          <span>Drop%: {inputs.dropRange}</span>
+          <span>{inputs.simulations} simulations</span>
         </div>
       </div>
     );
