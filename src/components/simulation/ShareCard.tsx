@@ -32,9 +32,9 @@ function ShareHistogram({ histogram, median }: { histogram: HistogramBin[]; medi
         const binMid = (bin.binStart + bin.binEnd) / 2;
         const isMedianBin = binMid >= median * 0.9 && binMid <= median * 1.1;
         
-        // Vibrant gold with glow effect for bars
-        const goldColor = '#e6b54a'; // Brighter, more saturated gold
-        const redColor = '#f43f5e'; // Vibrant red for median
+        // Use design tokens so export matches the live UI theme exactly.
+        const goldColor = 'hsl(var(--primary))';
+        const redColor = 'hsl(var(--destructive))';
         
         return (
           <div
@@ -45,9 +45,9 @@ function ShareHistogram({ histogram, median }: { histogram: HistogramBin[]; medi
               backgroundColor: isMedianBin ? redColor : goldColor,
               minHeight: bin.count > 0 ? '2px' : '0',
               borderRadius: '2px 2px 0 0',
-              boxShadow: isMedianBin 
-                ? '0 0 8px rgba(244, 63, 94, 0.6)' 
-                : '0 0 4px rgba(230, 181, 74, 0.3)'
+               boxShadow: isMedianBin
+                 ? '0 0 8px hsl(var(--destructive) / 0.55)'
+                 : '0 0 6px hsl(var(--primary) / 0.35)'
             }}
           />
         );
@@ -91,19 +91,19 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
     // Get histogram X-axis labels
     const xLabels = histogram.filter((_, i) => i % 8 === 0).map(bin => formatCurrency(bin.binStart, 0));
 
-    // Vibrant, saturated colors that match the live UI
+    // Drive the exported image from the same theme tokens as the live site.
     const colors = {
-      background: '#0a0a0b',
-      cardBg: '#111113',
-      cardBgDark: '#0d0d0f',
-      gold: '#e6b54a', // Brighter, more saturated gold
-      goldGlow: 'rgba(230, 181, 74, 0.4)',
-      white: '#ffffff',
-      textMuted: '#a1a1aa', // Brighter muted text
-      textDim: '#71717a',
-      border: '#27272a',
-      borderLight: '#3f3f46',
-      red: '#f43f5e'
+      background: 'hsl(var(--background))',
+      cardBg: 'hsl(var(--card))',
+      cardBgDark: 'hsl(var(--accent))',
+      gold: 'hsl(var(--primary))',
+      goldGlow: 'hsl(var(--primary) / 0.35)',
+      white: 'hsl(var(--foreground))',
+      textMuted: 'hsl(var(--muted-foreground))',
+      textDim: 'hsl(var(--muted-foreground) / 0.7)',
+      border: 'hsl(var(--border))',
+      borderLight: 'hsl(var(--border) / 0.8)',
+      red: 'hsl(var(--destructive))',
     };
 
     return (
@@ -114,10 +114,10 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
           backgroundColor: colors.background,
           color: colors.white,
           padding: '32px',
-          fontFamily: 'system-ui, -apple-system, sans-serif',
+          fontFamily: 'var(--font-sans)',
           borderRadius: '16px',
           // Subtle outer glow for depth
-          boxShadow: `0 0 60px rgba(0, 0, 0, 0.8), 0 0 30px ${colors.goldGlow}`
+          boxShadow: `0 0 60px hsl(0 0% 0% / 0.8), 0 0 30px ${colors.goldGlow}`
         }}
       >
         {/* Top Header */}
@@ -144,7 +144,7 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
             borderRadius: '12px', 
             padding: '24px',
             border: `1px solid ${colors.border}`,
-            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)'
+            boxShadow: '0 4px 20px hsl(0 0% 0% / 0.35)'
           }}>
             {/* Main Value */}
             <div style={{ textAlign: 'center', paddingBottom: '20px', borderBottom: `1px solid ${colors.border}` }}>
@@ -246,7 +246,7 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
             }}>
               <div>
                 <span style={{ color: colors.textMuted }}>Mean: </span>
-                <span style={{ fontFamily: 'monospace', fontWeight: '500', color: colors.white }}>{formatCurrency(stats.mean, 2)}</span>
+                <span style={{ fontFamily: 'var(--font-mono)', fontWeight: '500', color: colors.white }}>{formatCurrency(stats.mean, 2)}</span>
               </div>
               <div style={{ color: colors.textDim, fontSize: '12px' }}>
                 Computed in {formatDuration(executionTimeMs)}
@@ -264,7 +264,7 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
               padding: '20px',
               border: `1px solid ${colors.border}`,
               flex: 1,
-              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)'
+              boxShadow: '0 4px 20px hsl(0 0% 0% / 0.35)'
             }}>
               <div style={{ 
                 display: 'flex', 
@@ -355,7 +355,7 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
                 borderRadius: '12px', 
                 padding: '20px',
                 border: `1px solid ${colors.border}`,
-                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)'
+                boxShadow: '0 4px 20px hsl(0 0% 0% / 0.35)'
               }}>
                 <div style={{ 
                   display: 'flex', 
