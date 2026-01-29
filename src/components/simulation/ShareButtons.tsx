@@ -1,5 +1,5 @@
-import { useState, useRef, useCallback } from "react";
-import { toPng } from "html-to-image";
+import { useState, useRef, useCallback, useMemo } from "react";
+import { toPng, toSvg } from "html-to-image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Share2, Copy, Download, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
@@ -20,38 +20,140 @@ export function ShareButtons({ results, params, thresholds }: ShareButtonsProps)
   const [copyStatus, setCopyStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [copyError, setCopyError] = useState<string | null>(null);
 
+  const themeRootClassName = useMemo(() => {
+    // Ensure the offscreen capture subtree inherits the same theme classes as the live UI.
+    // (This matters if the app ever toggles .dark or other theme root classes.)
+    const root = document.documentElement;
+    return root.className || "";
+  }, []);
+
+  const supportsDisplayP3 = useMemo(() => {
+    try {
+      const Offscreen = (window as any).OffscreenCanvas;
+      if (!Offscreen) return false;
+      const c = new Offscreen(1, 1);
+      // Safari/Chrome support differs; feature-detect via context options.
+      const ctx = c.getContext("2d", { colorSpace: "display-p3" } as any);
+      return !!ctx;
+    } catch {
+      return false;
+    }
+  }, []);
+
+  const getOpaqueBackground = useCallback(() => {
+    // Use the *actual computed* background to avoid theme mismatches & transparency flattening.
+    const el = cardRef.current;
+    if (!el) return "rgb(0, 0, 0)";
+    const bg = getComputedStyle(el).backgroundColor;
+    // If somehow transparent, fall back to document background.
+    if (!bg || bg === "transparent" || bg === "rgba(0, 0, 0, 0)") {
+      return getComputedStyle(document.body).backgroundColor || "rgb(0, 0, 0)";
+    }
+    return bg;
+  }, []);
+
+  const blobFromCanvas = useCallback(async (canvas: HTMLCanvasElement | OffscreenCanvas, colorSpace?: "display-p3" | "srgb") => {
+    // Prefer OffscreenCanvas.convertToBlob (supports modern colorSpace options in Safari).
+    const anyCanvas = canvas as any;
+    if (typeof anyCanvas.convertToBlob === "function") {
+      return (await anyCanvas.convertToBlob({
+        type: "image/png",
+        // quality is ignored for PNG but harmless
+        quality: 1,
+        ...(colorSpace ? { colorSpace } : {}),
+      })) as Blob;
+    }
+
+    // Fallback: HTMLCanvasElement.toBlob (no explicit colorSpace in most browsers).
+    return await new Promise<Blob>((resolve, reject) => {
+      (canvas as HTMLCanvasElement).toBlob((b) => {
+        if (!b) reject(new Error("Failed to create PNG blob"));
+        else resolve(b);
+      }, "image/png");
+    });
+  }, []);
+
   const generateImage = useCallback(async (): Promise<Blob | null> => {
     if (!cardRef.current) return null;
 
     // Wait for fonts to load
     await document.fonts.ready;
 
+    const background = getOpaqueBackground();
+    const scale = 2; // Higher DPI while keeping layout width the same
+
     try {
-      const dataUrl = await toPng(cardRef.current, {
-        quality: 1,
-        pixelRatio: 3, // Higher DPI for crisp colors and details
-        cacheBust: true, // Prevent stale cache
-        skipAutoScale: false,
-        backgroundColor: '#0a0a0b', // Explicit solid dark background - no transparency
+      // Prefer SVG → (Display‑P3) canvas → PNG for wide-gamut fidelity on Safari/P3 displays.
+      // This avoids the common "washed out" effect when DOM is rendered in P3 but rasterized in sRGB.
+      const svgDataUrl = await toSvg(cardRef.current, {
+        cacheBust: true,
+        backgroundColor: background,
         style: {
-          // Ensure no color shifts from browser defaults
-          colorScheme: 'dark',
+          // Ensure OS/UI default form controls don't influence colors.
+          colorScheme: "dark",
         },
-        filter: (node) => {
-          // Exclude any nodes that might cause issues
-          return true;
-        }
       });
 
-      // Convert data URL to blob
-      const response = await fetch(dataUrl);
-      const blob = await response.blob();
-      return blob;
+      const img = new Image();
+      img.decoding = "async";
+      img.src = svgDataUrl;
+      await img.decode();
+
+      const rect = cardRef.current.getBoundingClientRect();
+      const width = Math.max(1, Math.round(rect.width));
+      const height = Math.max(1, Math.round(rect.height));
+
+      const outW = Math.round(width * scale);
+      const outH = Math.round(height * scale);
+
+      const useP3 = supportsDisplayP3;
+      const colorSpace = useP3 ? ("display-p3" as const) : ("srgb" as const);
+
+      if (useP3 && (window as any).OffscreenCanvas) {
+        const offscreen = new (window as any).OffscreenCanvas(outW, outH) as OffscreenCanvas;
+        const ctx = offscreen.getContext(
+          "2d",
+          { alpha: false, colorSpace } as any,
+        ) as unknown as OffscreenCanvasRenderingContext2D | null;
+
+        if (!ctx) throw new Error("Could not create 2D context (OffscreenCanvas)");
+
+        ctx.scale(scale, scale);
+        ctx.fillStyle = background;
+        ctx.fillRect(0, 0, width, height);
+        ctx.drawImage(img, 0, 0, width, height);
+        return await blobFromCanvas(offscreen, colorSpace);
+      }
+
+      const canvas = document.createElement("canvas");
+      canvas.width = outW;
+      canvas.height = outH;
+      const ctx = canvas.getContext("2d", { alpha: false } as any) as CanvasRenderingContext2D | null;
+      if (!ctx) throw new Error("Could not create 2D context");
+      ctx.scale(scale, scale);
+      ctx.fillStyle = background;
+      ctx.fillRect(0, 0, width, height);
+      ctx.drawImage(img, 0, 0, width, height);
+      return await blobFromCanvas(canvas);
     } catch (error) {
-      console.error("Error generating image:", error);
-      return null;
+      // Fallback to html-to-image's PNG path if SVG/canvas pipeline fails.
+      try {
+        const dataUrl = await toPng(cardRef.current, {
+          cacheBust: true,
+          pixelRatio: 2,
+          backgroundColor: background,
+          style: {
+            colorScheme: "dark",
+          },
+        });
+        const response = await fetch(dataUrl);
+        return await response.blob();
+      } catch (e) {
+        console.error("Error generating image:", error, e);
+        return null;
+      }
     }
-  }, []);
+  }, [blobFromCanvas, getOpaqueBackground, supportsDisplayP3]);
 
   const handleCopyImage = useCallback(async () => {
     setIsGenerating(true);
@@ -163,7 +265,7 @@ ${window.location.origin}`;
             {isGenerating ? (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
             ) : copyStatus === 'success' ? (
-              <CheckCircle2 className="h-4 w-4 mr-2 text-green-500" />
+              <CheckCircle2 className="h-4 w-4 mr-2 text-primary" />
             ) : (
               <Copy className="h-4 w-4 mr-2" />
             )}
@@ -187,7 +289,7 @@ ${window.location.origin}`;
         </div>
 
         {copyError && (
-          <div className="flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400">
+          <div className="flex items-center gap-2 text-sm text-primary">
             <AlertCircle className="h-4 w-4" />
             <span>{copyError}</span>
           </div>
@@ -198,13 +300,19 @@ ${window.location.origin}`;
         </p>
 
         {/* Hidden ShareCard for image generation */}
-        <div className="absolute -left-[9999px] -top-[9999px] overflow-hidden">
-          <ShareCard
-            ref={cardRef}
-            results={results}
-            params={params}
-            thresholds={thresholds}
-          />
+        <div
+          aria-hidden
+          className="fixed left-0 top-0 -z-50 overflow-hidden"
+          style={{ transform: "translateX(-200vw) translateY(-200vh)" }}
+        >
+          <div className={themeRootClassName}>
+            <ShareCard
+              ref={cardRef}
+              results={results}
+              params={params}
+              thresholds={thresholds}
+            />
+          </div>
         </div>
       </CardContent>
     </Card>
