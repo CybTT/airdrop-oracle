@@ -11,7 +11,7 @@ import { AdvancedInputForm } from "./AdvancedInputForm";
 import { SimpleResults } from "./SimpleResults";
 import { SimpleThresholds } from "./SimpleThresholds";
 import { SimpleHistogram } from "./SimpleHistogram";
-import { ShareButtons } from "./ShareButtons";
+
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import {
   AlertDialog,
@@ -321,11 +321,6 @@ export function SimpleMonteCarloSimulator() {
                       onThresholdsChange={setThresholds}
                     />
                   </div>
-                  <ShareButtons
-                    results={results}
-                    params={classicParams}
-                    thresholds={thresholds}
-                  />
                 </>
               ) : (
                 <div className="h-96 flex items-center justify-center rounded-lg border bg-card">
@@ -366,11 +361,6 @@ export function SimpleMonteCarloSimulator() {
               <div className="grid lg:grid-cols-12 gap-6">
                 <div className="lg:col-span-6 space-y-4">
                   <SimpleResults results={results} />
-                  <ShareButtons
-                    results={results}
-                    params={advancedParams}
-                    thresholds={thresholds}
-                  />
                 </div>
                 <div className="lg:col-span-6 space-y-4">
                   <SimpleHistogram histogram={results.histogram} median={results.stats.median} />
